@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-farcaster",
-  "version": "1.0.0-beta.54",
+  "version": "1.0.0-beta.55",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -111,6 +111,6 @@
   "gitHead": "646c632924826e2b75c2304a75ee56959fe4a460",
   "repository": {
     "type": "git",
-    "url": "https://github.com/elizaos-plugins/plugin-farcaster.git"
+    "url": "git+https://github.com/elizaos-plugins/plugin-farcaster.git"
   }
 }
