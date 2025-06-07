@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-farcaster",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -105,6 +105,21 @@
         "type": "string",
         "minLength": 1,
         "description": "Type of action timeline, must match an ActionTimelineType enum value."
+      },
+      "FARCASTER_NEYNAR_API_KEY": {
+        "type": "string",
+        "description": "Neynar API key for accessing the Farcaster network.",
+        "required": true
+      },
+      "FARCASTER_NEYNAR_SIGNER_UUID": {
+        "type": "string",
+        "description": "Signer UUID associated with your Farcaster account, used to sign casts and interactions.",
+        "required": true
+      },
+      "FARCASTER_HUB_URL": {
+        "type": "string",
+        "description": "Base URL of the Farcaster hub that the client communicates with.",
+        "required": false
       }
     }
   },
