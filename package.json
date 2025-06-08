@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-farcaster",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -47,79 +47,101 @@
     "pluginType": "elizaos:client:1.0.0",
     "pluginParameters": {
       "FARCASTER_DRY_RUN": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Expected boolean value to enable or disable dry run mode."
+        "type": "boolean",
+        "description": "Enables or disables dry run mode when interacting with Farcaster; when true, operations are simulated but not executed.",
+        "required": false,
+        "sensitive": false
       },
       "FARCASTER_FID": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Farcaster fid is required and must be an integer greater than 0."
+        "type": "number",
+        "description": "The Farcaster FID (user identifier) used to publish or manage casts for a specific account.",
+        "required": true,
+        "default": 123,
+        "sensitive": false
       },
       "MAX_CAST_LENGTH": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Maximum length of a cast, must be an integer."
+        "type": "number",
+        "description": "Maximum number of characters allowed in a Farcaster cast.",
+        "required": false,
+        "default": 320,
+        "sensitive": false
       },
       "FARCASTER_POLL_INTERVAL": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Interval for polling in minutes, must be an integer."
+        "type": "number",
+        "description": "Polling interval in milliseconds for Farcaster operations such as fetching new casts.",
+        "required": false,
+        "default": 1000,
+        "sensitive": false
       },
       "ENABLE_POST": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Expected boolean value to enable or disable posting."
+        "type": "boolean",
+        "description": "Enables or disables the ability to post casts to Farcaster.",
+        "required": false,
+        "default": true,
+        "sensitive": false
       },
       "POST_INTERVAL_MIN": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Minimum interval between posts in minutes, must be an integer."
+        "type": "number",
+        "description": "Minimum interval in milliseconds between automated posts.",
+        "required": false,
+        "default": 1000,
+        "sensitive": false
       },
       "POST_INTERVAL_MAX": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Maximum interval between posts in minutes, must be an integer."
+        "type": "number",
+        "description": "Maximum interval in milliseconds between automated posts.",
+        "required": false,
+        "default": 5000,
+        "sensitive": false
       },
       "ENABLE_ACTION_PROCESSING": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Expected boolean value to enable or disable action processing."
+        "type": "boolean",
+        "description": "Turns on or off automated action processing for Farcaster events.",
+        "required": false,
+        "default": true,
+        "sensitive": false
       },
       "ACTION_INTERVAL": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Interval for action processing in minutes, must be an integer."
+        "type": "number",
+        "description": "Interval in milliseconds between action-processing cycles.",
+        "required": false,
+        "default": 1000,
+        "sensitive": false
       },
       "POST_IMMEDIATELY": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Expected boolean value to enable or disable immediate posting."
+        "type": "boolean",
+        "description": "If true, posts are published immediately instead of waiting for a schedule.",
+        "required": false,
+        "default": true,
+        "sensitive": false
       },
       "MAX_ACTIONS_PROCESSING": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Maximum number of actions to process, must be an integer."
-      },
-      "ACTION_TIMELINE_TYPE": {
-        "type": "string",
-        "minLength": 1,
-        "description": "Type of action timeline, must match an ActionTimelineType enum value."
-      },
-      "FARCASTER_NEYNAR_API_KEY": {
-        "type": "string",
-        "description": "Neynar API key for accessing the Farcaster network.",
-        "required": true
+        "type": "number",
+        "description": "Maximum number of Farcaster actions to process in a single batch.",
+        "required": false,
+        "default": 10,
+        "sensitive": false
       },
       "FARCASTER_NEYNAR_SIGNER_UUID": {
         "type": "string",
-        "description": "Signer UUID associated with your Farcaster account, used to sign casts and interactions.",
-        "required": true
+        "description": "UUID of the Neynar signer associated with the Farcaster account, required to sign casts.",
+        "required": true,
+        "default": "test-signer",
+        "sensitive": false
+      },
+      "FARCASTER_NEYNAR_API_KEY": {
+        "type": "string",
+        "description": "API key used to authenticate with the Neynar Farcaster API.",
+        "required": true,
+        "default": "test-key",
+        "sensitive": true
       },
       "FARCASTER_HUB_URL": {
         "type": "string",
-        "description": "Base URL of the Farcaster hub that the client communicates with.",
-        "required": false
+        "description": "Base URL for the Farcaster hub the client should communicate with.",
+        "required": false,
+        "default": "https://api.example.com",
+        "sensitive": false
       }
     }
   },
