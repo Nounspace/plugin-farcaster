@@ -3,7 +3,7 @@ import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
 import { FARCASTER_SOURCE } from './constants';
 import { Cast } from './types';
 
-export const MAX_CAST_LENGTH = 1024; // Updated to Twitter's current character limit
+export const MAX_CAST_LENGTH = 1024; // Farcaster cast character limit
 
 export function castId({ hash, agentId }: { hash: string; agentId: string }) {
   return `${hash}-${agentId}`;
@@ -16,34 +16,34 @@ export function castUuid(props: { hash: string; agentId: string }) {
 export function splitPostContent(content: string, maxLength: number = MAX_CAST_LENGTH): string[] {
   const paragraphs = content.split('\n\n').map((p) => p.trim());
   const posts: string[] = [];
-  let currentTweet = '';
+  let currentCast = '';
 
   for (const paragraph of paragraphs) {
     if (!paragraph) continue;
 
-    if ((currentTweet + '\n\n' + paragraph).trim().length <= maxLength) {
-      if (currentTweet) {
-        currentTweet += '\n\n' + paragraph;
+    if ((currentCast + '\n\n' + paragraph).trim().length <= maxLength) {
+      if (currentCast) {
+        currentCast += '\n\n' + paragraph;
       } else {
-        currentTweet = paragraph;
+        currentCast = paragraph;
       }
     } else {
-      if (currentTweet) {
-        posts.push(currentTweet.trim());
+      if (currentCast) {
+        posts.push(currentCast.trim());
       }
       if (paragraph.length <= maxLength) {
-        currentTweet = paragraph;
+        currentCast = paragraph;
       } else {
         // Split long paragraph into smaller chunks
         const chunks = splitParagraph(paragraph, maxLength);
         posts.push(...chunks.slice(0, -1));
-        currentTweet = chunks[chunks.length - 1];
+        currentCast = chunks[chunks.length - 1];
       }
     }
   }
 
-  if (currentTweet) {
-    posts.push(currentTweet.trim());
+  if (currentCast) {
+    posts.push(currentCast.trim());
   }
 
   return posts;
