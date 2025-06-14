@@ -19,7 +19,7 @@ export class FarcasterAgentManager {
 
   constructor(runtime: IAgentRuntime, config: FarcasterConfig) {
     this.runtime = runtime;
-    const signerUuid = config.FARCASTER_NEYNAR_SIGNER_UUID;
+    const signerUuid = config.FARCASTER_SIGNER_UUID;
 
     const neynarConfig = new Configuration({ apiKey: config.FARCASTER_NEYNAR_API_KEY });
 

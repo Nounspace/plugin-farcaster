@@ -17,7 +17,7 @@ function safeParseInt(value: string | undefined | null, defaultValue: number): n
 export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
   const fid = runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID;
   const neynarSignerUuid =
-    runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID') || process.env.FARCASTER_NEYNAR_SIGNER_UUID;
+    runtime.getSetting('FARCASTER_SIGNER_UUID') || process.env.FARCASTER_SIGNER_UUID;
   const neynarApiKey =
     runtime.getSetting('FARCASTER_NEYNAR_API_KEY') || process.env.FARCASTER_NEYNAR_API_KEY;
 
@@ -81,9 +81,9 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         1
       ),
 
-      FARCASTER_NEYNAR_SIGNER_UUID:
-        runtime.getSetting('FARCASTER_NEYNAR_SIGNER_UUID') ||
-        process.env.FARCASTER_NEYNAR_SIGNER_UUID,
+      FARCASTER_SIGNER_UUID:
+        runtime.getSetting('FARCASTER_SIGNER_UUID') ||
+        process.env.FARCASTER_SIGNER_UUID,
 
       FARCASTER_NEYNAR_API_KEY:
         runtime.getSetting('FARCASTER_NEYNAR_API_KEY') || process.env.FARCASTER_NEYNAR_API_KEY,

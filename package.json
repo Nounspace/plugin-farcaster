@@ -20,6 +20,7 @@
   ],
   "dependencies": {
     "@elizaos/core": "^1.0.0",
+    "@elizaos/plugin-farcaster": "workspace:*",
     "@neynar/nodejs-sdk": "^2.0.3",
     "lru-cache": "^11.1.0",
     "typescript": "^5.8.3",
@@ -32,8 +33,10 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
+    "test": "elizaos test",
     "test:watch": "vitest watch",
+    "test:unit": "vitest run __tests__/unit",
+    "test:e2e": "vitest run __tests__/e2e",
     "test:coverage": "vitest run --coverage",
     "lint": "prettier --write ./src",
     "clean": "rm -rf dist .turbo node_modules .turbo-tsconfig.json tsconfig.tsbuildinfo",
@@ -122,7 +125,7 @@
         "default": 10,
         "sensitive": false
       },
-      "FARCASTER_NEYNAR_SIGNER_UUID": {
+      "FARCASTER_SIGNER_UUID": {
         "type": "string",
         "description": "UUID of the Neynar signer associated with the Farcaster account, required to sign casts.",
         "required": true,

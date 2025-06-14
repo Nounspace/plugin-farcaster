@@ -69,7 +69,7 @@ export const FarcasterConfigSchema = z.object({
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
   MAX_ACTIONS_PROCESSING: z.number().int(),
-  FARCASTER_NEYNAR_SIGNER_UUID: z.string().min(1, 'FARCASTER_NEYNAR_SIGNER_UUID is not set'),
+  FARCASTER_SIGNER_UUID: z.string().min(1, 'FARCASTER_SIGNER_UUID is not set'),
   FARCASTER_NEYNAR_API_KEY: z.string().min(1, 'FARCASTER_NEYNAR_API_KEY is not set'),
   FARCASTER_HUB_URL: z.string().min(1, 'FARCASTER_HUB_URL is not set'),
 });

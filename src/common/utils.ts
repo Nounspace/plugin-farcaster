@@ -111,7 +111,7 @@ export function neynarCastToCast(neynarCast: CastWithInteractions): Cast {
       name: neynarCast.author.display_name || 'anon',
       username: neynarCast.author.username,
     },
-    ...(neynarCast.parent_hash
+    ...(neynarCast.parent_hash && neynarCast.parent_author?.fid
       ? {
           inReplyTo: {
             hash: neynarCast.parent_hash,

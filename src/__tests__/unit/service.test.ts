@@ -1,8 +1,8 @@
 import { logger } from '@elizaos/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { hasFarcasterEnabled, validateFarcasterConfig } from '../src/common/config';
-import { FarcasterAgentManager } from '../src/managers/agent';
-import { FarcasterService } from '../src/service';
+import { hasFarcasterEnabled, validateFarcasterConfig } from '../../common/config';
+import { FarcasterAgentManager } from '../../managers/agent';
+import { FarcasterService } from '../../service';
 
 // Create mock implementation for required dependencies
 vi.mock('@elizaos/core', () => {
@@ -22,7 +22,7 @@ vi.mock('@elizaos/core', () => {
   };
 });
 
-vi.mock('../src/managers/agent', () => {
+vi.mock('../../managers/agent.js', () => {
   return {
     FarcasterAgentManager: vi.fn().mockImplementation(() => {
       return {
@@ -36,12 +36,12 @@ vi.mock('../src/managers/agent', () => {
   };
 });
 
-vi.mock('../src/common/config', () => {
+vi.mock('../../common/config.js', () => {
   return {
-    hasFarcasterEnabled: vi.fn(),
+    hasFarcasterEnabled: vi.fn().mockReturnValue(true),
     validateFarcasterConfig: vi.fn().mockReturnValue({
       FARCASTER_FID: 12345,
-      FARCASTER_NEYNAR_SIGNER_UUID: 'mock-signer-uuid',
+      FARCASTER_SIGNER_UUID: 'mock-signer-uuid',
       FARCASTER_NEYNAR_API_KEY: 'mock-api-key',
     }),
   };
@@ -57,7 +57,7 @@ describe('FarcasterService', () => {
       getSetting: vi.fn((key) => {
         const settings: Record<string, string> = {
           FARCASTER_FID: '12345',
-          FARCASTER_NEYNAR_SIGNER_UUID: 'mock-signer-uuid',
+          FARCASTER_SIGNER_UUID: 'mock-signer-uuid',
           FARCASTER_NEYNAR_API_KEY: 'mock-api-key',
         };
         return settings[key] || '';

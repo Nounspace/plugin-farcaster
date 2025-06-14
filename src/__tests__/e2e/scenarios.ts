@@ -1,0 +1,351 @@
+import { type IAgentRuntime, logger, createUniqueUuid, type TestCase } from '@elizaos/core';
+import { FARCASTER_SERVICE_NAME } from '../../common/constants.js';
+import type { FarcasterService } from '../../service.js';
+
+// E2E Test Scenarios as TestCase functions
+export const farcasterE2EScenarios: TestCase[] = [
+  {
+    name: 'Farcaster Plugin - Agent Introduction',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      // Test 1: Post introduction
+      const postService = service.getPostService(runtime.agentId);
+      if (!postService) {
+        throw new Error('PostService not available');
+      }
+
+      const introText = `Hello Farcaster! I'm ${runtime.character.name}, an AI agent powered by ElizaOS. Looking forward to connecting with you all! 🤖`;
+      
+      const post = await postService.createPost({
+        agentId: runtime.agentId,
+        roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
+        text: introText,
+      });
+
+      if (!post || !post.id || !post.text || !post.metadata?.castHash) {
+        throw new Error('Failed to create introduction post');
+      }
+      
+      logger.info(`Posted introduction cast: ${post.metadata.castHash}`);
+
+      // Test 2: Fetch profile
+      const manager = service.getActiveManagers().get(runtime.agentId);
+      if (!manager) {
+        throw new Error('Manager not found for agent');
+      }
+
+      const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string);
+      const profile = await manager.client.getProfile(fid);
+
+      if (!profile || profile.fid !== fid) {
+        throw new Error('Profile fetch failed or FID mismatch');
+      }
+      
+      logger.info(`Agent profile verified: @${profile.username} (FID: ${profile.fid})`);
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Timeline Monitoring',
+
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      const postService = service.getPostService(runtime.agentId);
+      if (!postService) {
+        throw new Error('PostService not available');
+      }
+
+      // Test 1: Fetch timeline
+      const posts = await postService.getPosts({
+        agentId: runtime.agentId,
+        limit: 10,
+      });
+
+      if (!Array.isArray(posts)) {
+        throw new Error('getPosts did not return an array');
+      }
+      
+      logger.info(`Found ${posts.length} posts in timeline`);
+      
+      if (posts.length > 0) {
+        const firstPost = posts[0];
+        if (!firstPost.id || !firstPost.username || !firstPost.text) {
+          throw new Error('Post missing required fields');
+        }
+        logger.info(`Latest post by @${firstPost.username}: ${firstPost.text.substring(0, 50)}...`);
+      }
+
+      // Test 2: Fetch mentions
+      const mentions = await postService.getMentions(runtime.agentId, { limit: 5 });
+      
+      if (!Array.isArray(mentions)) {
+        throw new Error('getMentions did not return an array');
+      }
+      
+      logger.info(`Found ${mentions.length} mentions`);
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Message Send and Retrieve',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      const messageService = service.getMessageService(runtime.agentId);
+      if (!messageService) {
+        throw new Error('MessageService not available');
+      }
+
+      const roomId = createUniqueUuid(runtime, 'test-conversation');
+      
+      // Send a new cast
+      const message = await messageService.sendMessage({
+        agentId: runtime.agentId,
+        roomId,
+        text: 'Testing message send and retrieve with ElizaOS Farcaster plugin! 🧪',
+        type: 'POST' as any,
+      });
+
+      if (!message || !message.id || !message.metadata?.castHash) {
+        throw new Error('Failed to send message or missing metadata');
+      }
+      
+      logger.info(`Sent cast with hash: ${message.metadata.castHash}`);
+      
+      // Retrieve the message
+      const castHash = message.metadata.castHash as string;
+      const retrieved = await messageService.getMessage(castHash, runtime.agentId);
+      
+      if (!retrieved || retrieved.text !== message.text) {
+        throw new Error('Failed to retrieve message or content mismatch');
+      }
+      
+      logger.info('Successfully retrieved message by hash');
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Reply Threading',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      const messageService = service.getMessageService(runtime.agentId);
+      const postService = service.getPostService(runtime.agentId);
+      
+      if (!messageService || !postService) {
+        throw new Error('Services not available');
+      }
+
+      // First create a post to reply to
+      const originalPost = await postService.createPost({
+        agentId: runtime.agentId,
+        roomId: createUniqueUuid(runtime, 'reply-test'),
+        text: 'This is a test post for reply threading 🧵',
+      });
+
+      if (!originalPost || !originalPost.metadata?.castHash) {
+        throw new Error('Failed to create original post');
+      }
+
+      // Send a reply
+      const reply = await messageService.sendMessage({
+        agentId: runtime.agentId,
+        roomId: originalPost.roomId,
+        text: 'This is a test reply maintaining thread context! 💬',
+        type: 'REPLY' as any,
+        replyToId: originalPost.metadata.castHash,
+        metadata: {
+          parentHash: originalPost.metadata.castHash,
+        },
+      });
+      
+      if (!reply || !reply.inReplyTo || !reply.metadata?.castHash) {
+        throw new Error('Failed to create reply or missing thread context');
+      }
+      
+      logger.info(`Created reply ${reply.metadata.castHash} to ${originalPost.metadata.castHash}`);
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Action Execution',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      // Import the action directly
+      const { sendCastAction } = await import('../../actions/sendCast.js');
+      
+      // Create a mock message requesting a cast
+      const mockMessage = {
+        id: createUniqueUuid(runtime, 'test-message'),
+        agentId: runtime.agentId,
+        roomId: createUniqueUuid(runtime, 'test-room'),
+        entityId: runtime.agentId,
+        content: {
+          text: 'Can you post about the ElizaOS framework on Farcaster?',
+        },
+        createdAt: Date.now(),
+      };
+      
+      // Validate the action
+      const shouldExecute = await sendCastAction.validate(runtime, mockMessage);
+      if (!shouldExecute) {
+        throw new Error('SEND_CAST action validation failed');
+      }
+      
+      // Execute the action
+      const result = await sendCastAction.handler(runtime, mockMessage);
+      if (!result) {
+        throw new Error('SEND_CAST action execution failed');
+      }
+      
+      logger.info('Successfully validated and executed SEND_CAST action');
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Provider Context',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      // Import providers directly
+      const { farcasterProfileProvider } = await import('../../providers/profileProvider.js');
+      const { farcasterTimelineProvider } = await import('../../providers/timelineProvider.js');
+      
+      const mockMessage = {
+        id: createUniqueUuid(runtime, 'test-message'),
+        agentId: runtime.agentId,
+        roomId: createUniqueUuid(runtime, 'test-room'),
+        entityId: runtime.agentId,
+        content: { text: 'test' },
+        createdAt: Date.now(),
+      };
+      
+      // Test profile provider
+      const profileContext = await farcasterProfileProvider.get(runtime, mockMessage, { values: [], data: {}, text: '' });
+      
+      if (!profileContext || !profileContext.text || profileContext.data?.available === undefined) {
+        throw new Error('Profile provider returned invalid context');
+      }
+      
+      logger.info(`Profile provider: ${profileContext.text}`);
+      
+      // Test timeline provider
+      const timelineContext = await farcasterTimelineProvider.get(runtime, mockMessage, { values: [], data: {}, text: '' });
+      
+      if (!timelineContext || !timelineContext.text || timelineContext.data?.available === undefined) {
+        throw new Error('Timeline provider returned invalid context');
+      }
+      
+      logger.info(`Timeline provider: ${timelineContext.text}`);
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Rate Limit Handling',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      const messageService = service.getMessageService(runtime.agentId);
+      if (!messageService) {
+        throw new Error('MessageService not available');
+      }
+      
+      // Send multiple messages quickly
+      const promises: Promise<any>[] = [];
+      for (let i = 0; i < 3; i++) {
+        promises.push(
+          messageService.sendMessage({
+            agentId: runtime.agentId,
+            roomId: createUniqueUuid(runtime, 'rate-limit-test'),
+            text: `Rate limit test message ${i + 1}`,
+            type: 'POST' as any,
+          }).catch(error => {
+            logger.warn(`Expected rate limit error: ${error.message}`);
+            return null;
+          })
+        );
+      }
+      
+      const results = await Promise.all(promises);
+      const successfulSends = results.filter(r => r !== null);
+      
+      if (successfulSends.length === 0) {
+        throw new Error('All messages failed - check if rate limiting is too strict');
+      }
+      
+      logger.info(`Successfully sent ${successfulSends.length} out of ${promises.length} messages`);
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Service Health Check',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('Farcaster service not initialized');
+      }
+
+      const health = await service.healthCheck();
+      
+      if (!health || health.healthy === undefined || !health.details) {
+        throw new Error('Health check returned invalid data');
+      }
+      
+      logger.info(`Service health: ${health.healthy ? 'Healthy' : 'Unhealthy'}`);
+      logger.info(`Active managers: ${health.details.activeManagers}`);
+      
+      if (!health.healthy) {
+        logger.warn('Service reported unhealthy status:', health.details);
+      }
+    }
+  },
+
+  {
+    name: 'Farcaster Plugin - Should Send a Real Cast',
+    async fn(runtime: IAgentRuntime): Promise<void> {
+      const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+      if (!service) {
+        throw new Error('FarcasterService not found');
+      }
+
+      const postService = service.getPostService(runtime.agentId);
+      if (!postService) {
+        throw new Error('PostService not available');
+      }
+
+      const uniqueMessage = `This is a real E2E test cast from ElizaOS! ID: ${createUniqueUuid(runtime, 'e2e-cast')}`;
+      logger.info(`Attempting to post cast: "${uniqueMessage}"`);
+
+      const post = await postService.createPost({
+        agentId: runtime.agentId,
+        roomId: createUniqueUuid(runtime, 'farcaster-e2e-test'),
+        text: uniqueMessage,
+      });
+
+      if (!post || !post.id) {
+        throw new Error('E2E test failed to create a real cast.');
+      }
+
+      logger.success(`Successfully posted E2E test cast with ID: ${post.id}`);
+      // In a real-world scenario, you might want to add a step to delete this cast
+      // if the API supports it, to keep the feed clean.
+    },
+  },
+];
+
+// Export for use in test suite
+export default farcasterE2EScenarios; 

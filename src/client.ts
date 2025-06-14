@@ -1,7 +1,7 @@
 import { Content, elizaLogger } from '@elizaos/core';
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk';
-import { CastParamType } from '@neynar/nodejs-sdk/build/api/models/cast-param-type';
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api/models/cast-with-interactions';
+import { CastParamType, CastWithInteractions } from '@neynar/nodejs-sdk/build/api/index.js';
+// @ts-ignore
 import { LRUCache } from 'lru-cache';
 import { DEFAULT_CAST_CACHE_SIZE, DEFAULT_CAST_CACHE_TTL } from './common/constants';
 import type { Cast, CastId, FidRequest, Profile } from './common/types';

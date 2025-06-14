@@ -2,11 +2,20 @@ import { logger, Service, UUID, type IAgentRuntime } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from './common/constants';
 import { FarcasterAgentManager } from './managers/agent';
 import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
+import { FarcasterMessageService } from './services/MessageService';
+import { FarcasterPostService } from './services/PostService';
 
 export class FarcasterService extends Service {
   private static instance?: FarcasterService;
   private managers = new Map<UUID, FarcasterAgentManager>();
-  static serviceType: string = FARCASTER_SERVICE_NAME;
+  private messageServices = new Map<UUID, FarcasterMessageService>();
+  private postServices = new Map<UUID, FarcasterPostService>();
+
+  // Properly implement serviceType for discoverability
+  static serviceType = FARCASTER_SERVICE_NAME;
+
+  // Add service description
+  readonly description = 'Farcaster integration service for sending and receiving casts';
   readonly capabilityDescription = 'The agent is able to send and receive messages on farcaster';
 
   private static getInstance(): FarcasterService {
@@ -14,6 +23,11 @@ export class FarcasterService extends Service {
       FarcasterService.instance = new FarcasterService();
     }
     return FarcasterService.instance;
+  }
+
+  // Required by ElizaOS Service base class
+  async initialize(runtime: IAgentRuntime): Promise<void> {
+    await FarcasterService.start(runtime);
   }
 
   // Called to start a single Farcaster service
@@ -34,6 +48,14 @@ export class FarcasterService extends Service {
     const farcasterConfig = validateFarcasterConfig(runtime);
     manager = new FarcasterAgentManager(runtime, farcasterConfig);
     service.managers.set(runtime.agentId, manager);
+
+    // Create and store MessageService and PostService instances
+    const messageService = new FarcasterMessageService(manager.client, runtime);
+    const postService = new FarcasterPostService(manager.client, runtime);
+
+    service.messageServices.set(runtime.agentId, messageService);
+    service.postServices.set(runtime.agentId, postService);
+
     await manager.start();
 
     logger.success('Farcaster client started', runtime.agentId);
@@ -47,6 +69,8 @@ export class FarcasterService extends Service {
     if (manager) {
       await manager.stop();
       service.managers.delete(runtime.agentId);
+      service.messageServices.delete(runtime.agentId);
+      service.postServices.delete(runtime.agentId);
       logger.info('Farcaster client stopped', runtime.agentId);
     } else {
       logger.debug('Farcaster service not running', runtime.agentId);
@@ -64,5 +88,54 @@ export class FarcasterService extends Service {
         logger.error('Error stopping Farcaster service', agentId, error);
       }
     }
+  }
+
+  // Get the MessageService for a specific agent
+  getMessageService(agentId: UUID): FarcasterMessageService | undefined {
+    return this.messageServices.get(agentId);
+  }
+
+  // Get the PostService for a specific agent
+  getPostService(agentId: UUID): FarcasterPostService | undefined {
+    return this.postServices.get(agentId);
+  }
+
+  // Add health check method
+  async healthCheck(): Promise<{ healthy: boolean; details: Record<string, any> }> {
+    const managerStatuses: Record<string, any> = {};
+    let overallHealthy = true;
+
+    for (const [agentId, manager] of Array.from(this.managers.entries())) {
+      try {
+        // Check if manager client is responsive
+        const profile = await manager.client.getProfile(
+          parseInt(manager.runtime.getSetting('FARCASTER_FID') as string)
+        );
+        managerStatuses[agentId] = {
+          status: 'healthy',
+          fid: profile.fid,
+          username: profile.username,
+        };
+      } catch (error) {
+        managerStatuses[agentId] = {
+          status: 'unhealthy',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        };
+        overallHealthy = false;
+      }
+    }
+
+    return {
+      healthy: overallHealthy,
+      details: {
+        activeManagers: this.managers.size,
+        managerStatuses,
+      },
+    };
+  }
+
+  // Get all active managers (for monitoring)
+  getActiveManagers(): Map<UUID, FarcasterAgentManager> {
+    return new Map(this.managers);
   }
 }

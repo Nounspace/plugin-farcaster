@@ -1,31 +1,76 @@
 # ElizaOS Farcaster Plugin
 
-A plugin for ElizaOS that enables agent integration with the Farcaster social network.
+A comprehensive plugin for ElizaOS that enables AI agents to fully participate in the Farcaster social network with posting, replying, and engagement capabilities.
 
 ## Overview
 
-The ElizaOS Farcaster Plugin allows AI agents to interact with the Farcaster social network by:
+The ElizaOS Farcaster Plugin provides a complete integration with Farcaster, allowing AI agents to:
 
-- Publishing original casts (posts)
-- Responding to mentions and replies
-- Interacting with other users' content
-- Processing user engagement automatically
+- **Post & Reply**: Create original casts and reply to conversations
+- **Monitor Mentions**: Track and respond to mentions automatically
+- **Engage with Content**: Like, recast, and interact with other users' posts
+- **Context-Aware Responses**: Maintain conversation threads and context
+- **Real-time Interaction**: Process interactions in real-time with configurable intervals
 
-This plugin leverages the [Neynar API](https://neynar.com) to interact with Farcaster, providing a robust integration between ElizaOS agents and the Farcaster social graph.
+This plugin leverages the [Neynar API](https://neynar.com) and implements full ElizaOS service interfaces for seamless integration.
 
 ## Features
 
-- **Automated Posting**: Schedule and publish regular casts with configurable intervals
-- **Engagement Monitoring**: Track mentions, replies, and interactions
-- **Conversation Threading**: Build and maintain conversation context for natural interactions
-- **Dry Run Mode**: Test functionality without actually posting to Farcaster
-- **Configurable Settings**: Customize behavior via environment variables
-- **Caching**: Efficient caching of profiles and casts for improved performance
+### Core Services
+- **FarcasterService**: Main service managing agent connections and lifecycle
+- **MessageService**: Implements `IMessageService` for sending/receiving messages
+- **PostService**: Implements `IPostService` for creating and managing posts
+
+### Actions
+- **SEND_CAST**: Post casts based on user requests
+- **REPLY_TO_CAST**: Reply to existing casts with context
+
+### Providers
+- **farcasterProfile**: Provides agent's Farcaster profile information
+- **farcasterTimeline**: Supplies recent timeline casts for context
+
+### Additional Features
+- **Automated Posting**: Schedule and publish regular casts
+- **Engagement Monitoring**: Track mentions and interactions
+- **Conversation Threading**: Maintain conversation context
+- **Metadata Tracking**: Store cast metadata for reference
+- **Health Monitoring**: Built-in health check functionality
+- **Caching**: Efficient caching for improved performance
 
 ## Installation
 
 ```bash
 npm install @elizaos/plugin-farcaster
+```
+
+## Setup
+
+### 1. Get Farcaster Credentials
+
+1. **Create a Farcaster Account**: If you don't have one, sign up at [Warpcast](https://warpcast.com)
+2. **Note your FID**: Find your Farcaster ID in your profile settings
+3. **Get Neynar API Access**:
+   - Sign up at [Neynar Developer Portal](https://dev.neynar.com/)
+   - Create a new application
+   - Copy your API key
+4. **Create a Signer**:
+   - In the Neynar dashboard, go to "Signers"
+   - Create a new signer for your FID
+   - Copy the Signer UUID
+
+### 2. Configure Environment
+
+Copy the example environment file and fill in your credentials:
+
+```bash
+cp env.example .env
+```
+
+Edit `.env` with your credentials:
+```env
+FARCASTER_FID=your-fid-here
+FARCASTER_NEYNAR_API_KEY=your-api-key-here
+FARCASTER_SIGNER_UUID=your-signer-uuid-here
 ```
 
 ## Configuration
@@ -37,7 +82,7 @@ The plugin requires the following configurations, which can be set via environme
 | Parameter                      | Description                            |
 | ------------------------------ | -------------------------------------- |
 | `FARCASTER_NEYNAR_API_KEY`     | Neynar API key for accessing Farcaster |
-| `FARCASTER_NEYNAR_SIGNER_UUID` | Signer UUID for your Farcaster account |
+| `FARCASTER_SIGNER_UUID` | Signer UUID for your Farcaster account |
 | `FARCASTER_FID`                | Your Farcaster FID (identifier)        |
 
 ### Optional Settings
@@ -58,22 +103,55 @@ The plugin requires the following configurations, which can be set via environme
 
 ## Usage
 
-### Basic Integration with ElizaOS
+### Basic Integration
+
+1. **In your agent's character file**:
+
+```json
+{
+  "name": "MyFarcasterAgent",
+  "bio": "An AI agent on Farcaster",
+  "plugins": ["@elizaos/plugin-farcaster"],
+  "settings": {
+    "FARCASTER_FID": "123456",
+    "FARCASTER_NEYNAR_API_KEY": "your-api-key",
+    "FARCASTER_SIGNER_UUID": "your-signer-uuid"
+  }
+}
+```
+
+2. **Start your agent**:
+
+```bash
+elizaos start --character path/to/character.json
+```
+
+### Using Actions
+
+The plugin provides actions that can be triggered through natural language:
+
+```
+User: "Can you post about the new ElizaOS features on Farcaster?"
+Agent: "I'll post about the new ElizaOS features on Farcaster now."
+[Agent posts to Farcaster]
+
+User: "Reply to that cast and thank them for the feedback"
+Agent: "I'll reply with a thank you message."
+[Agent replies to the cast]
+```
+
+### Programmatic Usage
 
 ```typescript
-import { ElizaOS } from '@elizaos/core';
-import farcasterPlugin from '@elizaos-plugins/client-farcaster';
+import farcasterPlugin from '@elizaos/plugin-farcaster';
 
-// Initialize ElizaOS
-const elizaOs = new ElizaOS({
-  // ElizaOS configuration
-});
+// The plugin exports its components
+const { actions, providers, services } = farcasterPlugin;
 
-// Register the Farcaster plugin
-elizaOs.registerPlugin(farcasterPlugin);
-
-// Start ElizaOS
-elizaOs.start();
+// Access specific services programmatically
+const farcasterService = runtime.getService('farcaster');
+const messageService = farcasterService.getMessageService(agentId);
+const postService = farcasterService.getPostService(agentId);
 ```
 
 ### Customizing Cast Templates
@@ -123,28 +201,69 @@ npm run dev
 
 ## Architecture
 
-The client is organized into several core components:
+The plugin is organized into several core components:
 
-- **FarcasterClient**: Base client for interacting with the Farcaster network via Neynar
-- **FarcasterPostManager**: Manages autonomous posting schedule and generation
-- **FarcasterInteractionManager**: Handles mentions, replies, and other interactions
-- **Memory Management**: Stores conversation context and history
+### Services
+- **FarcasterService**: Main service managing agent lifecycle and health monitoring
+- **MessageService**: Handles sending/receiving messages, implements `IMessageService`
+- **PostService**: Manages posts and interactions, implements `IPostService`
+
+### Managers
+- **FarcasterClient**: Base client for Neynar API interactions
+- **FarcasterAgentManager**: Manages agent-specific connections
+- **FarcasterInteractionManager**: Handles mentions and replies
+- **FarcasterPostManager**: Manages autonomous posting
+
+### Components
+- **Actions**: User-triggered capabilities (SEND_CAST, REPLY_TO_CAST)
+- **Providers**: Context providers for agent awareness
+- **Event Handlers**: Metadata tracking and event processing
+
+## Testing
+
+The plugin includes comprehensive test coverage:
+
+### Unit Tests
+Located in `__tests__/unit/`:
+- Service functionality tests
+- Action validation tests
+- Provider output tests
+
+### E2E Tests
+Located in `__tests__/e2e/`:
+- Real account interactions
+- Full conversation flows
+- Error handling scenarios
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests only
+npm run test:unit
+
+# Run E2E tests (requires API keys)
+npm run test:e2e
+
+# Run with coverage
+npm run test:coverage
+```
+
+For E2E tests, ensure your `.env` file contains valid API credentials.
 
 ## Dependencies
 
 - [@neynar/nodejs-sdk](https://www.npmjs.com/package/@neynar/nodejs-sdk): Official SDK for Neynar API
 - [@elizaos/core](https://www.npmjs.com/package/@elizaos/core): ElizaOS core framework
+- [lru-cache](https://www.npmjs.com/package/lru-cache): Efficient caching
+- [zod](https://www.npmjs.com/package/zod): Schema validation
 
-## Testing
+## Contributing
 
-The client includes comprehensive tests for:
+Contributions are welcome! Please ensure all tests pass and add new tests for any new functionality.
 
-- Cast creation and management
-- Interaction handling
-- Timeline processing
+## License
 
-Run the tests with:
-
-```bash
-npm test
-```
+This plugin is part of the ElizaOS ecosystem and follows the same licensing terms.
