@@ -16,7 +16,7 @@ interface Message {
   userId: string;
   username: string;
   text: string;
-  type: string;
+  type: FarcasterMessageType;
   timestamp: number;
   inReplyTo?: string;
   metadata?: any;
