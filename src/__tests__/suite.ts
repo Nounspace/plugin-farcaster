@@ -373,7 +373,7 @@ export class FarcasterTestSuite implements TestSuite {
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'test-room'),
         text: testText,
-        type: 'POST' as any,
+        type: FarcasterMessageType.CAST,
       });
 
       if (!message || !message.id) {

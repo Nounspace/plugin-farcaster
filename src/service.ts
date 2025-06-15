@@ -95,7 +95,10 @@ export class FarcasterService extends Service {
     return this.messageServices.get(agentId);
   }
 
-  // Get the PostService for a specific agent (for compatibility)
+  /**
+   * Get the PostService for a specific agent (for compatibility)
+   * @deprecated Use getCastService() instead. Will be removed in a future major release.
+   */
   getPostService(agentId: UUID): FarcasterCastService | undefined {
     return this.castServices.get(agentId);
   }

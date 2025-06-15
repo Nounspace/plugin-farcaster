@@ -68,7 +68,7 @@ export class FarcasterPostManager {
         logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic post:', this.runtime.agentId, error);
+        logger.error('[Farcaster] Error in periodic cast loop:', this.runtime.agentId, error);
       }
     }
   }

@@ -6,7 +6,7 @@ import {
 import type { FarcasterClient } from '../client';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
-import { FarcasterMessageType } from '../common/types';
+import { FarcasterMessageType, FarcasterEventTypes } from '../common/types';
 
 // Simple interfaces for MessageService compatibility
 interface Message {
@@ -140,7 +140,7 @@ export class FarcasterMessageService implements IMessageService {
       };
 
       // Emit event for metadata tracking
-      await this.runtime.emitEvent('FARCASTER_CAST_SENT', {
+      await this.runtime.emitEvent(FarcasterEventTypes.CAST_GENERATED, {
         runtime: this.runtime,
         castHash: cast.hash,
         message,

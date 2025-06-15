@@ -1,6 +1,7 @@
 import { type IAgentRuntime, logger, createUniqueUuid, type TestCase } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../../common/constants.js';
 import type { FarcasterService } from '../../service.js';
+import { FarcasterMessageType } from '../../common/types.js';
 
 // E2E Test Scenarios as TestCase functions
 export const farcasterE2EScenarios: TestCase[] = [
@@ -114,7 +115,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         agentId: runtime.agentId,
         roomId,
         text: 'Testing message send and retrieve with ElizaOS Farcaster plugin! 🧪',
-        type: 'POST' as any,
+        type: FarcasterMessageType.CAST,
       });
 
       if (!message || !message.id || !message.metadata?.castHash) {
@@ -272,7 +273,7 @@ export const farcasterE2EScenarios: TestCase[] = [
             agentId: runtime.agentId,
             roomId: createUniqueUuid(runtime, 'rate-limit-test'),
             text: `Rate limit test message ${i + 1}`,
-            type: 'POST' as any,
+            type: FarcasterMessageType.CAST,
           }).catch(error => {
             logger.warn(`Expected rate limit error: ${error.message}`);
             return null;
