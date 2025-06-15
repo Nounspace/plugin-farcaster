@@ -16,9 +16,9 @@ export const farcasterTimelineProvider: Provider = {
   get: async (runtime: IAgentRuntime, message: Memory, state: State): Promise<ProviderResult> => {
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
-      const postService = service?.getPostService(runtime.agentId);
+      const castService = service?.getCastService(runtime.agentId);
 
-      if (!postService) {
+      if (!castService) {
         return {
           text: 'Farcaster timeline not available.',
           data: { available: false },
@@ -26,7 +26,7 @@ export const farcasterTimelineProvider: Provider = {
       }
 
       // Get recent casts from timeline
-      const casts = await postService.getPosts({
+      const casts = await castService.getPosts({
         agentId: runtime.agentId,
         limit: 5,
       });

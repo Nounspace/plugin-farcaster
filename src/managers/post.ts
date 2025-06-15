@@ -5,13 +5,13 @@ import { FARCASTER_SOURCE } from '../common/constants';
 import { FarcasterConfig, FarcasterEventTypes, LastCast } from '../common/types';
 import { lastCastCacheKey } from '../common/utils';
 
-interface FarcasterPostParams {
+interface FarcasterCastParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
 }
 
-export class FarcasterPostManager {
+export class FarcasterCastManager {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   fid: number;
@@ -19,7 +19,7 @@ export class FarcasterPostManager {
   private config: FarcasterConfig;
   private isRunning: boolean = false;
 
-  constructor(opts: FarcasterPostParams) {
+  constructor(opts: FarcasterCastParams) {
     this.client = opts.client;
     this.runtime = opts.runtime;
     this.config = opts.config;
