@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-farcaster",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -23,7 +23,7 @@
     "@elizaos/plugin-farcaster": "workspace:*",
     "@neynar/nodejs-sdk": "^2.0.3",
     "lru-cache": "^11.1.0",
-    "typescript": "^5.8.3",
+    "typescript": "5.8.3",
     "zod": "^3.25.9"
   },
   "devDependencies": {
