@@ -233,4 +233,297 @@ describe('FarcasterService', () => {
       'The agent is able to send and receive messages on farcaster'
     );
   });
+describe('error handling during start', () => {
+    it('should handle validateFarcasterConfig throwing an error', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      (validateFarcasterConfig as any).mockImplementation(() => {
+        throw new Error('Invalid configuration');
+      });
+
+      await expect(FarcasterService.start(mockRuntime)).rejects.toThrow('Invalid configuration');
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to validate Farcaster configuration',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle FarcasterAgentManager constructor failure', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      (FarcasterAgentManager as any).mockImplementation(() => {
+        throw new Error('Manager initialization failed');
+      });
+
+      await expect(FarcasterService.start(mockRuntime)).rejects.toThrow('Manager initialization failed');
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to create Farcaster agent manager',
+        'mock-agent-id',
+        expect.any(Error)
+      );
+    });
+
+    it('should handle manager.start() failure', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const mockManager = {
+        start: vi.fn().mockRejectedValue(new Error('Start failed')),
+        stop: vi.fn().mockResolvedValue(undefined),
+        runtime: { agentId: 'mock-agent-id' },
+      };
+      (FarcasterAgentManager as any).mockImplementation(() => mockManager);
+
+      await expect(FarcasterService.start(mockRuntime)).rejects.toThrow('Start failed');
+      expect(logger.error).toHaveBeenCalledWith(
+        'Failed to start Farcaster service',
+        'mock-agent-id',
+        expect.any(Error)
+      );
+    });
+  });
+
+  describe('singleton behavior', () => {
+    it('should return the same instance when called multiple times', () => {
+      const service1 = new FarcasterService();
+      const service2 = new FarcasterService();
+      
+      expect(service1).toBe(service2);
+    });
+
+    it('should maintain singleton state across async operations', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      const [service1, service2] = await Promise.all([
+        FarcasterService.start(mockRuntime),
+        FarcasterService.start({ ...mockRuntime, agentId: 'different-agent' })
+      ]);
+      
+      expect(service1).toBe(service2);
+    });
+
+    it('should reset singleton when all services are stopped', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const service1 = await FarcasterService.start(mockRuntime);
+      
+      await service1.stop();
+      
+      // @ts-ignore - accessing private property for test
+      expect(FarcasterService.instance).toBeUndefined();
+    });
+  });
+
+  describe('configuration edge cases', () => {
+    it('should handle runtime without agentId', async () => {
+      const runtimeWithoutAgentId = {
+        getSetting: vi.fn().mockReturnValue('test-value')
+      };
+      
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      await expect(FarcasterService.start(runtimeWithoutAgentId)).rejects.toThrow();
+    });
+
+    it('should handle null runtime', async () => {
+      await expect(FarcasterService.start(null as any)).rejects.toThrow();
+    });
+
+    it('should handle undefined runtime', async () => {
+      await expect(FarcasterService.start(undefined as any)).rejects.toThrow();
+    });
+
+    it('should handle runtime with missing getSetting method', async () => {
+      const invalidRuntime = { agentId: 'test-agent' };
+      
+      await expect(FarcasterService.start(invalidRuntime as any)).rejects.toThrow();
+    });
+  });
+
+  describe('manager lifecycle and memory management', () => {
+    it('should properly clean up managers on individual stop', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const service = await FarcasterService.start(mockRuntime);
+      
+      const managers = (service as any).managers;
+      expect(managers.size).toBe(1);
+      
+      await FarcasterService.stop(mockRuntime);
+      
+      expect(managers.size).toBe(0);
+    });
+
+    it('should handle multiple start/stop cycles', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      for (let i = 0; i < 3; i++) {
+        const service = await FarcasterService.start(mockRuntime);
+        const managers = (service as any).managers;
+        expect(managers.size).toBe(1);
+        
+        await FarcasterService.stop(mockRuntime);
+        expect(managers.size).toBe(0);
+      }
+    });
+
+    it('should handle concurrent start operations for different agents', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      const runtime1 = { ...mockRuntime, agentId: 'agent-1' };
+      const runtime2 = { ...mockRuntime, agentId: 'agent-2' };
+      const runtime3 = { ...mockRuntime, agentId: 'agent-3' };
+      
+      const services = await Promise.all([
+        FarcasterService.start(runtime1),
+        FarcasterService.start(runtime2),
+        FarcasterService.start(runtime3)
+      ]);
+      
+      const managers = (services[0] as any).managers;
+      expect(managers.size).toBe(3);
+      expect(managers.has('agent-1')).toBe(true);
+      expect(managers.has('agent-2')).toBe(true);
+      expect(managers.has('agent-3')).toBe(true);
+    });
+
+    it('should handle stopping specific agents while others continue running', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      const runtime1 = { ...mockRuntime, agentId: 'agent-1' };
+      const runtime2 = { ...mockRuntime, agentId: 'agent-2' };
+      
+      await FarcasterService.start(runtime1);
+      await FarcasterService.start(runtime2);
+      
+      const service = new FarcasterService();
+      const managers = (service as any).managers;
+      
+      expect(managers.size).toBe(2);
+      
+      await FarcasterService.stop(runtime1);
+      
+      expect(managers.size).toBe(1);
+      expect(managers.has('agent-1')).toBe(false);
+      expect(managers.has('agent-2')).toBe(true);
+    });
+  });
+
+  describe('logging verification', () => {
+    it('should log appropriate messages for different service states', async () => {
+      // Test when service is disabled
+      (hasFarcasterEnabled as any).mockReturnValue(false);
+      await FarcasterService.start(mockRuntime);
+      expect(logger.debug).toHaveBeenCalledWith('Farcaster service not enabled', 'mock-agent-id');
+      
+      // Reset and test when service is enabled
+      vi.clearAllMocks();
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      await FarcasterService.start(mockRuntime);
+      expect(logger.success).toHaveBeenCalledWith('Farcaster client started', 'mock-agent-id');
+    });
+
+    it('should log debug message when stopping all services', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const service = await FarcasterService.start(mockRuntime);
+      
+      vi.clearAllMocks();
+      await service.stop();
+      
+      expect(logger.debug).toHaveBeenCalledWith('Stopping ALL Farcaster services');
+    });
+
+    it('should log info message when individual service stops', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      await FarcasterService.start(mockRuntime);
+      
+      vi.clearAllMocks();
+      await FarcasterService.stop(mockRuntime);
+      
+      expect(logger.info).toHaveBeenCalledWith('Farcaster client stopped', 'mock-agent-id');
+    });
+
+    it('should not log error when stopping non-existent service', async () => {
+      await FarcasterService.stop(mockRuntime);
+      
+      expect(logger.error).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith('Farcaster service not running', 'mock-agent-id');
+    });
+  });
+
+  describe('async operations and race conditions', () => {
+    it('should handle rapid start/stop sequences', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      const promises = [];
+      for (let i = 0; i < 5; i++) {
+        promises.push(FarcasterService.start(mockRuntime));
+        promises.push(FarcasterService.stop(mockRuntime));
+      }
+      
+      await expect(Promise.all(promises)).resolves.toBeDefined();
+    });
+
+    it('should handle concurrent stop operations gracefully', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const service = await FarcasterService.start(mockRuntime);
+      
+      const stopPromises = [
+        service.stop(),
+        service.stop(),
+        service.stop()
+      ];
+      
+      await expect(Promise.all(stopPromises)).resolves.toBeDefined();
+    });
+
+    it('should handle manager stop timeout scenarios', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      const service = await FarcasterService.start(mockRuntime);
+      
+      // Mock manager to never resolve stop
+      const managers = (service as any).managers;
+      const manager = managers.get('mock-agent-id');
+      manager.stop.mockImplementation(() => new Promise(() => {})); // Never resolves
+      
+      // This should not hang the test
+      const stopPromise = FarcasterService.stop(mockRuntime);
+      
+      // Give it a small amount of time then check it hasn't resolved
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Since we mocked it to never resolve, we'll just verify the call was made
+      expect(manager.stop).toHaveBeenCalled();
+    });
+  });
+
+  describe('service state validation', () => {
+    it('should correctly identify service type', () => {
+      expect(FarcasterService.serviceType).toBe('farcaster');
+      expect(typeof FarcasterService.serviceType).toBe('string');
+    });
+
+    it('should provide meaningful capability description', () => {
+      const service = new FarcasterService();
+      const description = service.capabilityDescription;
+      
+      expect(description).toBe('The agent is able to send and receive messages on farcaster');
+      expect(typeof description).toBe('string');
+      expect(description.length).toBeGreaterThan(0);
+    });
+
+    it('should maintain consistent manager state', async () => {
+      (hasFarcasterEnabled as any).mockReturnValue(true);
+      
+      const service = await FarcasterService.start(mockRuntime);
+      const managers = (service as any).managers;
+      
+      // Verify manager is properly stored
+      expect(managers.has('mock-agent-id')).toBe(true);
+      const manager = managers.get('mock-agent-id');
+      expect(manager).toBeDefined();
+      expect(manager.runtime.agentId).toBe('mock-agent-id');
+    });
+
+    it('should handle empty manager map gracefully', async () => {
+      const service = new FarcasterService();
+      
+      // Should not throw when stopping with no managers
+      await expect(service.stop()).resolves.toBeUndefined();
+    });
+  });
 });
