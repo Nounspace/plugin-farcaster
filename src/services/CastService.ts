@@ -1,9 +1,5 @@
 import {
   type UUID,
-  type IPostService,
-  type Post,
-  type CreatePostOptions,
-  type GetPostsOptions,
   logger,
   createUniqueUuid,
 } from '@elizaos/core';
@@ -12,7 +8,47 @@ import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
 import type { Cast } from '../common/types';
 
-export class FarcasterPostService implements IPostService {
+// Simple interfaces for PostService compatibility  
+interface Post {
+  id: string;
+  agentId: UUID;
+  roomId: string;
+  userId: string;
+  username: string;
+  text: string;
+  timestamp: number;
+  inReplyTo?: string;
+  media?: any[];
+  metadata?: any;
+}
+
+interface CreatePostOptions {
+  agentId: UUID;
+  roomId: string;
+  text: string;
+  media?: any[];
+  inReplyTo?: string;
+}
+
+interface GetPostsOptions {
+  agentId: UUID;
+  roomId?: string;
+  limit?: number;
+}
+
+interface IPostService {
+  createPost(options: CreatePostOptions): Promise<Post>;
+  getPosts(options: GetPostsOptions): Promise<Post[]>;
+  getPost(postId: string, agentId: UUID): Promise<Post | null>;
+  deletePost(postId: string, agentId: UUID): Promise<void>;
+  likePost(postId: string, agentId: UUID): Promise<void>;
+  unlikePost(postId: string, agentId: UUID): Promise<void>;
+  repost(postId: string, agentId: UUID): Promise<void>;
+  unrepost(postId: string, agentId: UUID): Promise<void>;
+  getMentions(agentId: UUID, options?: Partial<GetPostsOptions>): Promise<Post[]>;
+}
+
+export class FarcasterCastService implements IPostService {
   constructor(
     private client: FarcasterClient,
     private runtime: any
@@ -35,7 +71,7 @@ export class FarcasterPostService implements IPostService {
       }
 
       const cast = neynarCastToCast(casts[0]);
-      const post: Post = {
+      const castResult: Post = {
         id: castUuid({ hash: cast.hash, agentId }),
         agentId,
         roomId,
@@ -53,9 +89,9 @@ export class FarcasterPostService implements IPostService {
         },
       };
 
-      return post;
+      return castResult;
     } catch (error) {
-      logger.error('[Farcaster] Error creating post:', error);
+      logger.error('[Farcaster] Error creating cast:', error);
       throw error;
     }
   }
@@ -64,13 +100,13 @@ export class FarcasterPostService implements IPostService {
     try {
       const { agentId, roomId, limit = 20 } = options;
 
-      // Get timeline posts
+      // Get timeline casts
       const { timeline } = await this.client.getTimeline({
         fid: this.runtime.config.FARCASTER_FID,
         pageSize: limit,
       });
 
-      const posts: Post[] = timeline
+      const casts: Post[] = timeline
         .filter((cast) => {
           if (roomId) {
             const castRoomId = createUniqueUuid(this.runtime, cast.threadId || cast.hash);
@@ -80,9 +116,9 @@ export class FarcasterPostService implements IPostService {
         })
         .map((cast) => this.castToPost(cast, agentId));
 
-      return posts;
+      return casts;
     } catch (error) {
-      logger.error('[Farcaster] Error fetching posts:', error);
+      logger.error('[Farcaster] Error fetching casts:', error);
       return [];
     }
   }
@@ -97,7 +133,7 @@ export class FarcasterPostService implements IPostService {
 
       return this.castToPost(farcasterCast, agentId);
     } catch (error) {
-      logger.error('[Farcaster] Error fetching post:', error);
+      logger.error('[Farcaster] Error fetching cast:', error);
       return null;
     }
   }
@@ -119,7 +155,7 @@ export class FarcasterPostService implements IPostService {
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.likeCast({ signerUuid, castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error liking post:', error);
+      logger.error('[Farcaster] Error liking cast:', error);
       throw error;
     }
   }
@@ -135,7 +171,7 @@ export class FarcasterPostService implements IPostService {
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.unlikeCast({ signerUuid, castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error unliking post:', error);
+      logger.error('[Farcaster] Error unliking cast:', error);
       throw error;
     }
   }
@@ -181,12 +217,12 @@ export class FarcasterPostService implements IPostService {
         pageSize: options?.limit || 20,
       });
 
-      const posts: Post[] = mentions.map((castWithInteractions) => {
+      const mentionCasts: Post[] = mentions.map((castWithInteractions) => {
         const cast = neynarCastToCast(castWithInteractions);
         return this.castToPost(cast, agentId);
       });
 
-      return posts;
+      return mentionCasts;
     } catch (error) {
       logger.error('[Farcaster] Error fetching mentions:', error);
       return [];

@@ -5,7 +5,6 @@ import {
   type State,
   logger,
   createUniqueUuid,
-  MessageType,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import type { FarcasterService } from '../service';
@@ -85,31 +84,31 @@ export const sendCastAction: Action = {
         castContent = castContent.substring(0, 317) + '...';
       }
 
-      // Create the post
-      const post = await postService.createPost({
+      // Create the cast
+      const cast = await postService.createPost({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
         text: castContent,
       });
 
-      logger.info(`[SEND_CAST] Successfully posted cast: ${post.id}`);
+      logger.info(`[SEND_CAST] Successfully posted cast: ${cast.id}`);
 
       // Store the cast in memory
       await runtime.createMemory(
         {
           agentId: runtime.agentId,
-          roomId: post.roomId,
+          roomId: cast.roomId,
           // userId removed - not part of Memory type
           entityId: runtime.agentId,
           content: {
             text: castContent,
             source: 'farcaster',
             metadata: {
-              castHash: post.metadata?.castHash,
+              castHash: cast.metadata?.castHash,
               action: 'SEND_CAST',
             },
           },
-          createdAt: post.timestamp,
+          createdAt: cast.timestamp,
         },
         'messages'
       );

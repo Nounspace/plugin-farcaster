@@ -1,14 +1,13 @@
 import {
   type IAgentRuntime,
   ModelType,
-  MessageType,
   type TestSuite,
   createUniqueUuid,
   logger,
   type TestCase,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
-import { FidRequest } from '../common/types';
+import { FidRequest, FarcasterMessageType } from '../common/types';
 import { FarcasterAgentManager } from '../managers/agent';
 import { TEST_IMAGE } from './test-utils';
 import { farcasterE2EScenarios } from './e2e/scenarios';
@@ -518,7 +517,7 @@ export class FarcasterTestSuite implements TestSuite {
             agentId: runtime.agentId,
             roomId: targetPost.roomId,
             text: 'Great post! Testing real interactions with ElizaOS 🎉',
-            type: MessageType.REPLY,
+            type: FarcasterMessageType.REPLY,
             replyToId: targetPost.metadata.castHash,
             metadata: {
               parentHash: targetPost.metadata.castHash,
@@ -560,7 +559,7 @@ export class FarcasterTestSuite implements TestSuite {
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'metadata-test'),
         text: 'Testing metadata tracking with ElizaOS',
-        type: MessageType.POST,
+        type: FarcasterMessageType.CAST,
       });
 
       if (!testMessage || !testMessage.metadata?.castHash) {

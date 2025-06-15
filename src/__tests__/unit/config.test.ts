@@ -3,8 +3,8 @@ import { hasFarcasterEnabled, validateFarcasterConfig } from '../../common/confi
 import {
   DEFAULT_MAX_CAST_LENGTH,
   DEFAULT_POLL_INTERVAL,
-  DEFAULT_POST_INTERVAL_MAX,
-  DEFAULT_POST_INTERVAL_MIN,
+  DEFAULT_CAST_INTERVAL_MAX,
+  DEFAULT_CAST_INTERVAL_MIN,
 } from '../../common/constants';
 
 // Create mock IAgentRuntime for testing
@@ -52,11 +52,11 @@ describe('Farcaster Configuration', () => {
       expect(config.FARCASTER_DRY_RUN).toBe(false);
       expect(config.MAX_CAST_LENGTH).toBe(DEFAULT_MAX_CAST_LENGTH);
       expect(config.FARCASTER_POLL_INTERVAL).toBe(DEFAULT_POLL_INTERVAL);
-      expect(config.ENABLE_POST).toBe(true);
-      expect(config.POST_INTERVAL_MIN).toBe(DEFAULT_POST_INTERVAL_MIN);
-      expect(config.POST_INTERVAL_MAX).toBe(DEFAULT_POST_INTERVAL_MAX);
+      expect(config.ENABLE_CAST).toBe(true);
+      expect(config.CAST_INTERVAL_MIN).toBe(DEFAULT_CAST_INTERVAL_MIN);
+      expect(config.CAST_INTERVAL_MAX).toBe(DEFAULT_CAST_INTERVAL_MAX);
       expect(config.ENABLE_ACTION_PROCESSING).toBe(false);
-      expect(config.POST_IMMEDIATELY).toBe(false);
+      expect(config.CAST_IMMEDIATELY).toBe(false);
       expect(config.FARCASTER_HUB_URL).toBe('hub.pinata.cloud');
     });
 
@@ -68,12 +68,12 @@ describe('Farcaster Configuration', () => {
         FARCASTER_DRY_RUN: 'true',
         MAX_CAST_LENGTH: '500',
         FARCASTER_POLL_INTERVAL: '60',
-        ENABLE_POST: 'false',
-        POST_INTERVAL_MIN: '60',
-        POST_INTERVAL_MAX: '120',
+        ENABLE_CAST: 'false',
+        CAST_INTERVAL_MIN: '60',
+        CAST_INTERVAL_MAX: '120',
         ENABLE_ACTION_PROCESSING: 'true',
         ACTION_INTERVAL: '10',
-        POST_IMMEDIATELY: 'true',
+        CAST_IMMEDIATELY: 'true',
         MAX_ACTIONS_PROCESSING: '5',
         FARCASTER_HUB_URL: 'custom.hub.url',
       });
@@ -86,12 +86,12 @@ describe('Farcaster Configuration', () => {
       expect(config.FARCASTER_DRY_RUN).toBe(true);
       expect(config.MAX_CAST_LENGTH).toBe(500);
       expect(config.FARCASTER_POLL_INTERVAL).toBe(60);
-      expect(config.ENABLE_POST).toBe(false);
-      expect(config.POST_INTERVAL_MIN).toBe(60);
-      expect(config.POST_INTERVAL_MAX).toBe(120);
+      expect(config.ENABLE_CAST).toBe(false);
+      expect(config.CAST_INTERVAL_MIN).toBe(60);
+      expect(config.CAST_INTERVAL_MAX).toBe(120);
       expect(config.ENABLE_ACTION_PROCESSING).toBe(true);
       expect(config.ACTION_INTERVAL).toBe(10);
-      expect(config.POST_IMMEDIATELY).toBe(true);
+      expect(config.CAST_IMMEDIATELY).toBe(true);
       expect(config.MAX_ACTIONS_PROCESSING).toBe(5);
       expect(config.FARCASTER_HUB_URL).toBe('custom.hub.url');
     });
@@ -103,8 +103,8 @@ describe('Farcaster Configuration', () => {
         FARCASTER_NEYNAR_API_KEY: 'test-api-key',
         MAX_CAST_LENGTH: 'not-a-number',
         FARCASTER_POLL_INTERVAL: 'invalid',
-        POST_INTERVAL_MIN: 'invalid',
-        POST_INTERVAL_MAX: 'invalid',
+        CAST_INTERVAL_MIN: 'invalid',
+        CAST_INTERVAL_MAX: 'invalid',
         ACTION_INTERVAL: 'invalid',
         MAX_ACTIONS_PROCESSING: 'invalid',
       });
@@ -113,8 +113,8 @@ describe('Farcaster Configuration', () => {
 
       expect(config.MAX_CAST_LENGTH).toBe(DEFAULT_MAX_CAST_LENGTH);
       expect(config.FARCASTER_POLL_INTERVAL).toBe(DEFAULT_POLL_INTERVAL);
-      expect(config.POST_INTERVAL_MIN).toBe(DEFAULT_POST_INTERVAL_MIN);
-      expect(config.POST_INTERVAL_MAX).toBe(DEFAULT_POST_INTERVAL_MAX);
+      expect(config.CAST_INTERVAL_MIN).toBe(DEFAULT_CAST_INTERVAL_MIN);
+      expect(config.CAST_INTERVAL_MAX).toBe(DEFAULT_CAST_INTERVAL_MAX);
       expect(config.ACTION_INTERVAL).toBe(5);
       expect(config.MAX_ACTIONS_PROCESSING).toBe(1);
     });
@@ -126,8 +126,8 @@ describe('Farcaster Configuration', () => {
         FARCASTER_NEYNAR_API_KEY: 'test-api-key',
         MAX_CAST_LENGTH: '-100',
         FARCASTER_POLL_INTERVAL: '-10',
-        POST_INTERVAL_MIN: '-30',
-        POST_INTERVAL_MAX: '-60',
+        CAST_INTERVAL_MIN: '-30',
+        CAST_INTERVAL_MAX: '-60',
         ACTION_INTERVAL: '-5',
         MAX_ACTIONS_PROCESSING: '-1',
       });
@@ -137,8 +137,8 @@ describe('Farcaster Configuration', () => {
       // safeParseInt applies Math.max(1, parsed)
       expect(config.MAX_CAST_LENGTH).toBe(1);
       expect(config.FARCASTER_POLL_INTERVAL).toBe(1);
-      expect(config.POST_INTERVAL_MIN).toBe(1);
-      expect(config.POST_INTERVAL_MAX).toBe(1);
+      expect(config.CAST_INTERVAL_MIN).toBe(1);
+      expect(config.CAST_INTERVAL_MAX).toBe(1);
       expect(config.ACTION_INTERVAL).toBe(1);
       expect(config.MAX_ACTIONS_PROCESSING).toBe(1);
     });

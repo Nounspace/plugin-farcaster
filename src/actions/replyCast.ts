@@ -4,10 +4,10 @@ import {
   type Memory,
   type State,
   logger,
-  MessageType,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import type { FarcasterService } from '../service';
+import { FarcasterMessageType } from '../common/types';
 
 export const replyCastAction: Action = {
   name: 'REPLY_TO_CAST',
@@ -102,7 +102,7 @@ export const replyCastAction: Action = {
         agentId: runtime.agentId,
         roomId: message.roomId,
         text: replyContent,
-        type: MessageType.REPLY,
+        type: FarcasterMessageType.REPLY,
         replyToId: parentCastHash as string,
         metadata: {
           parentHash: parentCastHash,

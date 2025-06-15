@@ -20,17 +20,17 @@ export const farcasterE2EScenarios: TestCase[] = [
 
       const introText = `Hello Farcaster! I'm ${runtime.character.name}, an AI agent powered by ElizaOS. Looking forward to connecting with you all! 🤖`;
       
-      const post = await postService.createPost({
+      const cast = await postService.createPost({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
         text: introText,
       });
 
-      if (!post || !post.id || !post.text || !post.metadata?.castHash) {
-        throw new Error('Failed to create introduction post');
+      if (!cast || !cast.id || !cast.text || !cast.metadata?.castHash) {
+        throw new Error('Failed to create introduction cast');
       }
       
-      logger.info(`Posted introduction cast: ${post.metadata.castHash}`);
+      logger.info(`Posted introduction cast: ${cast.metadata.castHash}`);
 
       // Test 2: Fetch profile
       const manager = service.getActiveManagers().get(runtime.agentId);
@@ -63,24 +63,24 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('PostService not available');
       }
 
-      // Test 1: Fetch timeline
-      const posts = await postService.getPosts({
+      // Test 1: Fetch timeline casts
+      const casts = await postService.getPosts({
         agentId: runtime.agentId,
         limit: 10,
       });
 
-      if (!Array.isArray(posts)) {
+      if (!Array.isArray(casts)) {
         throw new Error('getPosts did not return an array');
       }
       
-      logger.info(`Found ${posts.length} posts in timeline`);
+      logger.info(`Found ${casts.length} casts in timeline`);
       
-      if (posts.length > 0) {
-        const firstPost = posts[0];
-        if (!firstPost.id || !firstPost.username || !firstPost.text) {
-          throw new Error('Post missing required fields');
+      if (casts.length > 0) {
+        const firstCast = casts[0];
+        if (!firstCast.id || !firstCast.username || !firstCast.text) {
+          throw new Error('Cast missing required fields');
         }
-        logger.info(`Latest post by @${firstPost.username}: ${firstPost.text.substring(0, 50)}...`);
+        logger.info(`Latest cast by @${firstCast.username}: ${firstCast.text.substring(0, 50)}...`);
       }
 
       // Test 2: Fetch mentions
@@ -150,26 +150,26 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Services not available');
       }
 
-      // First create a post to reply to
-      const originalPost = await postService.createPost({
+      // First create a cast to reply to
+      const originalCast = await postService.createPost({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'reply-test'),
-        text: 'This is a test post for reply threading 🧵',
+        text: 'This is a test cast for reply threading 🧵',
       });
 
-      if (!originalPost || !originalPost.metadata?.castHash) {
-        throw new Error('Failed to create original post');
+      if (!originalCast || !originalCast.metadata?.castHash) {
+        throw new Error('Failed to create original cast');
       }
 
       // Send a reply
       const reply = await messageService.sendMessage({
         agentId: runtime.agentId,
-        roomId: originalPost.roomId,
+        roomId: originalCast.roomId,
         text: 'This is a test reply maintaining thread context! 💬',
         type: 'REPLY' as any,
-        replyToId: originalPost.metadata.castHash,
+        replyToId: originalCast.metadata.castHash,
         metadata: {
-          parentHash: originalPost.metadata.castHash,
+          parentHash: originalCast.metadata.castHash,
         },
       });
       
@@ -177,7 +177,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Failed to create reply or missing thread context');
       }
       
-      logger.info(`Created reply ${reply.metadata.castHash} to ${originalPost.metadata.castHash}`);
+      logger.info(`Created reply ${reply.metadata.castHash} to ${originalCast.metadata.castHash}`);
     }
   },
 
@@ -330,17 +330,17 @@ export const farcasterE2EScenarios: TestCase[] = [
       const uniqueMessage = `This is a real E2E test cast from ElizaOS! ID: ${createUniqueUuid(runtime, 'e2e-cast')}`;
       logger.info(`Attempting to post cast: "${uniqueMessage}"`);
 
-      const post = await postService.createPost({
+      const cast = await postService.createPost({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-e2e-test'),
         text: uniqueMessage,
       });
 
-      if (!post || !post.id) {
+      if (!cast || !cast.id) {
         throw new Error('E2E test failed to create a real cast.');
       }
 
-      logger.success(`Successfully posted E2E test cast with ID: ${post.id}`);
+      logger.success(`Successfully posted E2E test cast with ID: ${cast.id}`);
       // In a real-world scenario, you might want to add a step to delete this cast
       // if the API supports it, to keep the feed clean.
     },

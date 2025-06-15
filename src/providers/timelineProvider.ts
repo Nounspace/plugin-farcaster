@@ -25,47 +25,47 @@ export const farcasterTimelineProvider: Provider = {
         };
       }
 
-      // Get recent posts from timeline
-      const posts = await postService.getPosts({
+      // Get recent casts from timeline
+      const casts = await postService.getPosts({
         agentId: runtime.agentId,
         limit: 5,
       });
 
-      if (!posts || posts.length === 0) {
+      if (!casts || casts.length === 0) {
         return {
           text: 'No recent casts in your timeline.',
           data: {
             available: true,
-            posts: [],
+            casts: [],
             count: 0,
           },
         };
       }
 
-      // Format posts for context
-      const formattedPosts = posts
-        .map((post, index) => {
-          const timeAgo = getTimeAgo(new Date(post.timestamp));
-          return `${index + 1}. @${post.username} (${timeAgo}): ${post.text}`;
+      // Format casts for context
+      const formattedCasts = casts
+        .map((cast, index) => {
+          const timeAgo = getTimeAgo(new Date(cast.timestamp));
+          return `${index + 1}. @${cast.username} (${timeAgo}): ${cast.text}`;
         })
         .join('\n');
 
       return {
-        text: `Recent casts from your timeline:\n${formattedPosts}`,
+        text: `Recent casts from your timeline:\n${formattedCasts}`,
         data: {
           available: true,
-          posts: posts.map((p) => ({
-            id: p.id,
-            username: p.username,
-            text: p.text,
-            timestamp: p.timestamp,
-            castHash: p.metadata?.castHash,
+          casts: casts.map((c) => ({
+            id: c.id,
+            username: c.username,
+            text: c.text,
+            timestamp: c.timestamp,
+            castHash: c.metadata?.castHash,
           })),
-          count: posts.length,
+          count: casts.length,
         },
         values: {
-          latestCastHash: posts[0]?.metadata?.castHash,
-          latestCastText: posts[0]?.text,
+          latestCastHash: casts[0]?.metadata?.castHash,
+          latestCastText: casts[0]?.text,
         },
       };
     } catch (error) {
