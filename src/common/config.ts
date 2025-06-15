@@ -25,8 +25,14 @@ export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
 }
 
 /**
- * Validates or constructs a FarcasterConfig object using zod,
- * taking values from the IAgentRuntime or process.env as needed.
+ * Constructs and validates a Farcaster configuration object using runtime settings and environment variables.
+ *
+ * Retrieves configuration values for the Farcaster client, applying defaults where necessary, and validates them against the {@link FarcasterConfigSchema}. Throws a detailed error if validation fails.
+ *
+ * @param runtime - The runtime environment providing configuration settings.
+ * @returns The validated {@link FarcasterConfig} object.
+ *
+ * @throws {Error} If configuration validation fails, with details about each invalid field.
  */
 export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig {
   const fid = Number.parseInt(runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID);
