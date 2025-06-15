@@ -20,7 +20,6 @@
   ],
   "dependencies": {
     "@elizaos/core": "^1.0.0",
-    "@elizaos/plugin-farcaster": "workspace:*",
     "@neynar/nodejs-sdk": "^2.0.3",
     "lru-cache": "^11.1.0",
     "typescript": "5.8.3",
