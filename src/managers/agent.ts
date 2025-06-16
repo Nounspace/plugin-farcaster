@@ -3,7 +3,7 @@ import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { FarcasterClient } from '../client';
 import { type FarcasterConfig } from '../common/types';
 import { FarcasterInteractionManager } from './interactions';
-import { FarcasterPostManager } from './post';
+import { FarcasterCastManager } from './post';
 
 /**
  * A manager that orchestrates all Farcaster operations:
@@ -14,7 +14,7 @@ import { FarcasterPostManager } from './post';
 export class FarcasterAgentManager {
   readonly runtime: IAgentRuntime;
   readonly client: FarcasterClient;
-  readonly posts: FarcasterPostManager;
+  readonly casts: FarcasterCastManager;
   readonly interactions: FarcasterInteractionManager;
 
   constructor(runtime: IAgentRuntime, config: FarcasterConfig) {
@@ -31,16 +31,16 @@ export class FarcasterAgentManager {
 
     logger.success('Farcaster Neynar client initialized.');
 
-    this.posts = new FarcasterPostManager({ client, runtime, config });
+    this.casts = new FarcasterCastManager({ client, runtime, config });
 
     this.interactions = new FarcasterInteractionManager({ client, runtime, config });
   }
 
   async start() {
-    await Promise.all([this.posts.start(), this.interactions.start()]);
+    await Promise.all([this.casts.start(), this.interactions.start()]);
   }
 
   async stop() {
-    await Promise.all([this.posts.stop(), this.interactions.stop()]);
+    await Promise.all([this.casts.stop(), this.interactions.stop()]);
   }
 }

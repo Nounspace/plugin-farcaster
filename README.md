@@ -19,7 +19,7 @@ This plugin leverages the [Neynar API](https://neynar.com) and implements full E
 ### Core Services
 - **FarcasterService**: Main service managing agent connections and lifecycle
 - **MessageService**: Implements `IMessageService` for sending/receiving messages
-- **PostService**: Implements `IPostService` for creating and managing posts
+- **CastService**: Implements `IPostService` for creating and managing casts
 
 ### Actions
 - **SEND_CAST**: Post casts based on user requests
@@ -92,12 +92,12 @@ The plugin requires the following configurations, which can be set via environme
 | `FARCASTER_DRY_RUN`        | Run in simulation mode without posting (true/false) | false   |
 | `MAX_CAST_LENGTH`          | Maximum length of casts                             | 320     |
 | `FARCASTER_POLL_INTERVAL`  | Interval for checking mentions (minutes)            | 2       |
-| `ENABLE_POST`              | Enable automatic posting (true/false)               | true    |
-| `POST_INTERVAL_MIN`        | Minimum time between posts (minutes)                | 90      |
-| `POST_INTERVAL_MAX`        | Maximum time between posts (minutes)                | 180     |
+| `ENABLE_CAST`              | Enable automatic casting (true/false)               | true    |
+| `CAST_INTERVAL_MIN`        | Minimum time between casts (minutes)                | 90      |
+| `CAST_INTERVAL_MAX`        | Maximum time between casts (minutes)                | 180     |
 | `ENABLE_ACTION_PROCESSING` | Enable processing interactions (true/false)         | false   |
 | `ACTION_INTERVAL`          | Interval for processing actions (minutes)           | 5       |
-| `POST_IMMEDIATELY`         | Post immediately on startup (true/false)            | false   |
+| `CAST_IMMEDIATELY`         | Cast immediately on startup (true/false)            | false   |
 | `MAX_ACTIONS_PROCESSING`   | Maximum actions to process in one cycle             | 1       |
 | `ACTION_TIMELINE_TYPE`     | Type of timeline to use for actions                 | ForYou  |
 
@@ -151,7 +151,7 @@ const { actions, providers, services } = farcasterPlugin;
 // Access specific services programmatically
 const farcasterService = runtime.getService('farcaster');
 const messageService = farcasterService.getMessageService(agentId);
-const postService = farcasterService.getPostService(agentId);
+const castService = farcasterService.getCastService(agentId);
 ```
 
 ### Customizing Cast Templates
@@ -206,13 +206,13 @@ The plugin is organized into several core components:
 ### Services
 - **FarcasterService**: Main service managing agent lifecycle and health monitoring
 - **MessageService**: Handles sending/receiving messages, implements `IMessageService`
-- **PostService**: Manages posts and interactions, implements `IPostService`
+- **CastService**: Manages casts and interactions, implements `IPostService`
 
 ### Managers
 - **FarcasterClient**: Base client for Neynar API interactions
 - **FarcasterAgentManager**: Manages agent-specific connections
 - **FarcasterInteractionManager**: Handles mentions and replies
-- **FarcasterPostManager**: Manages autonomous posting
+- **FarcasterCastManager**: Manages autonomous casting
 
 ### Components
 - **Actions**: User-triggered capabilities (SEND_CAST, REPLY_TO_CAST)

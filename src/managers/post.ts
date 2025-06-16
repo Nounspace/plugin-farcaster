@@ -5,13 +5,13 @@ import { FARCASTER_SOURCE } from '../common/constants';
 import { FarcasterConfig, FarcasterEventTypes, LastCast } from '../common/types';
 import { lastCastCacheKey } from '../common/utils';
 
-interface FarcasterPostParams {
+interface FarcasterCastParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
 }
 
-export class FarcasterPostManager {
+export class FarcasterCastManager {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   fid: number;
@@ -19,7 +19,7 @@ export class FarcasterPostManager {
   private config: FarcasterConfig;
   private isRunning: boolean = false;
 
-  constructor(opts: FarcasterPostParams) {
+  constructor(opts: FarcasterCastParams) {
     this.client = opts.client;
     this.runtime = opts.runtime;
     this.config = opts.config;
@@ -27,7 +27,7 @@ export class FarcasterPostManager {
   }
 
   public async start() {
-    if (this.isRunning || !this.config.ENABLE_POST) {
+    if (this.isRunning || !this.config.ENABLE_CAST) {
       return;
     }
 
@@ -43,15 +43,15 @@ export class FarcasterPostManager {
   }
 
   private calculateDelay(): { delay: number; randomMinutes: number } {
-    const minMinutes = this.config.POST_INTERVAL_MIN;
-    const maxMinutes = this.config.POST_INTERVAL_MAX;
+    const minMinutes = this.config.CAST_INTERVAL_MIN;
+    const maxMinutes = this.config.CAST_INTERVAL_MAX;
     const randomMinutes = Math.floor(Math.random() * (maxMinutes - minMinutes + 1)) + minMinutes;
     const delay = randomMinutes * 60 * 1000;
     return { delay, randomMinutes };
   }
 
   private async runPeriodically(): Promise<void> {
-    if (this.config.POST_IMMEDIATELY) {
+    if (this.config.CAST_IMMEDIATELY) {
       await this.generateNewCast();
     }
 
@@ -68,7 +68,7 @@ export class FarcasterPostManager {
         logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic post:', this.runtime.agentId, error);
+        logger.error('[Farcaster] Error in periodic cast loop:', this.runtime.agentId, error);
       }
     }
   }
@@ -94,7 +94,7 @@ export class FarcasterPostManager {
         },
       });
 
-      this.runtime.emitEvent([EventType.POST_GENERATED, FarcasterEventTypes.POST_GENERATED], {
+      this.runtime.emitEvent([EventType.POST_GENERATED, FarcasterEventTypes.CAST_GENERATED], {
         runtime: this.runtime,
         callback,
         worldId,

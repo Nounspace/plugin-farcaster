@@ -1,16 +1,46 @@
 import {
   type UUID,
-  type IMessageService,
-  type Message,
-  MessageType,
-  type GetMessagesOptions,
-  type SendMessageOptions,
   logger,
   createUniqueUuid,
 } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
+import { FarcasterMessageType, FarcasterEventTypes } from '../common/types';
+
+// Simple interfaces for MessageService compatibility
+interface Message {
+  id: string;
+  agentId: UUID;
+  roomId: string;
+  userId: string;
+  username: string;
+  text: string;
+  type: FarcasterMessageType;
+  timestamp: number;
+  inReplyTo?: string;
+  metadata?: any;
+}
+
+interface GetMessagesOptions {
+  roomId?: string;
+  limit?: number;
+}
+
+interface SendMessageOptions {
+  agentId: UUID;
+  roomId: string;
+  text: string;
+  type: string;
+  replyToId?: string;
+  metadata?: any;
+}
+
+interface IMessageService {
+  getMessages(options: GetMessagesOptions): Promise<Message[]>;
+  sendMessage(options: SendMessageOptions): Promise<Message>;
+  getMessage(messageId: string, agentId: UUID): Promise<Message | null>;
+}
 
 export class FarcasterMessageService implements IMessageService {
   constructor(
@@ -45,7 +75,7 @@ export class FarcasterMessageService implements IMessageService {
           userId: cast.profile.fid.toString(),
           username: cast.profile.username,
           text: cast.text,
-          type: cast.inReplyTo ? MessageType.REPLY : MessageType.POST,
+          type: cast.inReplyTo ? FarcasterMessageType.REPLY : FarcasterMessageType.CAST,
           timestamp: cast.timestamp.getTime(),
           inReplyTo: cast.inReplyTo
             ? castUuid({ hash: cast.inReplyTo.hash, agentId: this.runtime.agentId })
@@ -69,7 +99,7 @@ export class FarcasterMessageService implements IMessageService {
       const { text, type, roomId, replyToId, agentId } = options;
 
       let inReplyTo: { hash: string; fid: number } | undefined = undefined;
-      if (replyToId && type === MessageType.REPLY) {
+      if (replyToId && type === FarcasterMessageType.REPLY) {
         // Extract cast hash from the message ID (which is a UUID)
         // In a real implementation, you'd need to maintain a mapping or extract from metadata
         const parentHash = options.metadata?.parentHash || replyToId;
@@ -98,7 +128,7 @@ export class FarcasterMessageService implements IMessageService {
         userId: cast.profile.fid.toString(),
         username: cast.profile.username,
         text: cast.text,
-        type,
+        type: type as FarcasterMessageType,
         timestamp: cast.timestamp.getTime(),
         inReplyTo: inReplyTo ? castUuid({ hash: inReplyTo.hash, agentId }) : undefined,
         metadata: {
@@ -110,7 +140,7 @@ export class FarcasterMessageService implements IMessageService {
       };
 
       // Emit event for metadata tracking
-      await this.runtime.emitEvent('FARCASTER_CAST_SENT', {
+      await this.runtime.emitEvent(FarcasterEventTypes.CAST_GENERATED, {
         runtime: this.runtime,
         castHash: cast.hash,
         message,
@@ -145,7 +175,7 @@ export class FarcasterMessageService implements IMessageService {
         userId: farcasterCast.profile.fid.toString(),
         username: farcasterCast.profile.username,
         text: farcasterCast.text,
-        type: farcasterCast.inReplyTo ? MessageType.REPLY : MessageType.POST,
+        type: farcasterCast.inReplyTo ? FarcasterMessageType.REPLY : FarcasterMessageType.CAST,
         timestamp: farcasterCast.timestamp.getTime(),
         inReplyTo: farcasterCast.inReplyTo
           ? castUuid({ hash: farcasterCast.inReplyTo.hash, agentId })

@@ -3,13 +3,13 @@ import { FARCASTER_SERVICE_NAME } from './common/constants';
 import { FarcasterAgentManager } from './managers/agent';
 import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
 import { FarcasterMessageService } from './services/MessageService';
-import { FarcasterPostService } from './services/PostService';
+import { FarcasterCastService } from './services/CastService';
 
 export class FarcasterService extends Service {
   private static instance?: FarcasterService;
   private managers = new Map<UUID, FarcasterAgentManager>();
   private messageServices = new Map<UUID, FarcasterMessageService>();
-  private postServices = new Map<UUID, FarcasterPostService>();
+  private castServices = new Map<UUID, FarcasterCastService>();
 
   // Properly implement serviceType for discoverability
   static serviceType = FARCASTER_SERVICE_NAME;
@@ -49,12 +49,12 @@ export class FarcasterService extends Service {
     manager = new FarcasterAgentManager(runtime, farcasterConfig);
     service.managers.set(runtime.agentId, manager);
 
-    // Create and store MessageService and PostService instances
+    // Create and store MessageService and CastService instances
     const messageService = new FarcasterMessageService(manager.client, runtime);
-    const postService = new FarcasterPostService(manager.client, runtime);
+    const castService = new FarcasterCastService(manager.client, runtime);
 
     service.messageServices.set(runtime.agentId, messageService);
-    service.postServices.set(runtime.agentId, postService);
+    service.castServices.set(runtime.agentId, castService);
 
     await manager.start();
 
@@ -70,7 +70,7 @@ export class FarcasterService extends Service {
       await manager.stop();
       service.managers.delete(runtime.agentId);
       service.messageServices.delete(runtime.agentId);
-      service.postServices.delete(runtime.agentId);
+      service.castServices.delete(runtime.agentId);
       logger.info('Farcaster client stopped', runtime.agentId);
     } else {
       logger.debug('Farcaster service not running', runtime.agentId);
@@ -95,9 +95,17 @@ export class FarcasterService extends Service {
     return this.messageServices.get(agentId);
   }
 
-  // Get the PostService for a specific agent
-  getPostService(agentId: UUID): FarcasterPostService | undefined {
-    return this.postServices.get(agentId);
+  /**
+   * Get the PostService for a specific agent (for compatibility)
+   * @deprecated Use getCastService() instead. Will be removed in a future major release.
+   */
+  getPostService(agentId: UUID): FarcasterCastService | undefined {
+    return this.castServices.get(agentId);
+  }
+
+  // Get the CastService for a specific agent  
+  getCastService(agentId: UUID): FarcasterCastService | undefined {
+    return this.castServices.get(agentId);
   }
 
   // Add health check method

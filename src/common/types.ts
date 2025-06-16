@@ -56,16 +56,16 @@ export const FarcasterConfigSchema = z.object({
   FARCASTER_FID: z.number().int().min(1, 'Farcaster fid is required'),
   MAX_CAST_LENGTH: z.number().int().default(DEFAULT_MAX_CAST_LENGTH),
   FARCASTER_POLL_INTERVAL: z.number().int().default(DEFAULT_POLL_INTERVAL),
-  ENABLE_POST: z
+  ENABLE_CAST: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
-  POST_INTERVAL_MIN: z.number().int(),
-  POST_INTERVAL_MAX: z.number().int(),
+  CAST_INTERVAL_MIN: z.number().int(),
+  CAST_INTERVAL_MAX: z.number().int(),
   ENABLE_ACTION_PROCESSING: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
   ACTION_INTERVAL: z.number().int(),
-  POST_IMMEDIATELY: z
+  CAST_IMMEDIATELY: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
   MAX_ACTIONS_PROCESSING: z.number().int(),
@@ -77,13 +77,14 @@ export const FarcasterConfigSchema = z.object({
 export type FarcasterConfig = z.infer<typeof FarcasterConfigSchema>;
 
 export enum FarcasterEventTypes {
-  POST_GENERATED = 'FARCASTER_POST_GENERATED',
+  CAST_GENERATED = 'FARCASTER_CAST_GENERATED',
   MENTION_RECEIVED = 'FARCASTER_MENTION_RECEIVED',
   THREAD_CAST_CREATED = 'FARCASTER_THREAD_CAST_CREATED',
-  // CAST_GENERATED = 'FARCASTER_CAST_GENERATED',
-  // CAST_SENT = 'FARCASTER_CAST_SENT',
-  // CAST_REACTION_RECEIVED = 'FARCASTER_CAST_REACTION_RECEIVED',
-  // CAST_REACTION_SENT = 'FARCASTER_CAST_REACTION_SENT',
+}
+
+export enum FarcasterMessageType {
+  CAST = 'CAST',
+  REPLY = 'REPLY',
 }
 
 export interface FarcasterGenericCastPayload extends Omit<MessagePayload, 'message'> {

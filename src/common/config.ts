@@ -3,8 +3,8 @@ import { ZodError } from 'zod';
 import {
   DEFAULT_MAX_CAST_LENGTH,
   DEFAULT_POLL_INTERVAL,
-  DEFAULT_POST_INTERVAL_MAX,
-  DEFAULT_POST_INTERVAL_MIN,
+  DEFAULT_CAST_INTERVAL_MAX,
+  DEFAULT_CAST_INTERVAL_MIN,
 } from './constants';
 import { FarcasterConfig, FarcasterConfigSchema } from './types';
 
@@ -25,8 +25,14 @@ export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
 }
 
 /**
- * Validates or constructs a FarcasterConfig object using zod,
- * taking values from the IAgentRuntime or process.env as needed.
+ * Constructs and validates a Farcaster configuration object using runtime settings and environment variables.
+ *
+ * Retrieves configuration values for the Farcaster client, applying defaults where necessary, and validates them against the {@link FarcasterConfigSchema}. Throws a detailed error if validation fails.
+ *
+ * @param runtime - The runtime environment providing configuration settings.
+ * @returns The validated {@link FarcasterConfig} object.
+ *
+ * @throws {Error} If configuration validation fails, with details about each invalid field.
  */
 export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig {
   const fid = Number.parseInt(runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID);
@@ -49,18 +55,18 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         DEFAULT_POLL_INTERVAL
       ),
 
-      ENABLE_POST:
-        runtime.getSetting('ENABLE_POST') ||
-        parseBooleanFromText(process.env.ENABLE_POST || 'true'),
+      ENABLE_CAST:
+        runtime.getSetting('ENABLE_CAST') ||
+        parseBooleanFromText(process.env.ENABLE_CAST || 'true'),
 
-      POST_INTERVAL_MIN: safeParseInt(
-        runtime.getSetting('POST_INTERVAL_MIN') || process.env.POST_INTERVAL_MIN,
-        DEFAULT_POST_INTERVAL_MIN
+      CAST_INTERVAL_MIN: safeParseInt(
+        runtime.getSetting('CAST_INTERVAL_MIN') || process.env.CAST_INTERVAL_MIN,
+        DEFAULT_CAST_INTERVAL_MIN
       ),
 
-      POST_INTERVAL_MAX: safeParseInt(
-        runtime.getSetting('POST_INTERVAL_MAX') || process.env.POST_INTERVAL_MAX,
-        DEFAULT_POST_INTERVAL_MAX
+      CAST_INTERVAL_MAX: safeParseInt(
+        runtime.getSetting('CAST_INTERVAL_MAX') || process.env.CAST_INTERVAL_MAX,
+        DEFAULT_CAST_INTERVAL_MAX
       ),
 
       ENABLE_ACTION_PROCESSING:
@@ -72,9 +78,9 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         5
       ), // 5 minutes
 
-      POST_IMMEDIATELY:
-        runtime.getSetting('POST_IMMEDIATELY') ||
-        parseBooleanFromText(process.env.POST_IMMEDIATELY || 'false'),
+      CAST_IMMEDIATELY:
+        runtime.getSetting('CAST_IMMEDIATELY') ||
+        parseBooleanFromText(process.env.CAST_IMMEDIATELY || 'false'),
 
       MAX_ACTIONS_PROCESSING: safeParseInt(
         runtime.getSetting('MAX_ACTIONS_PROCESSING') || process.env.MAX_ACTIONS_PROCESSING,
@@ -103,13 +109,13 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
     logger.log('Farcaster Client Configuration:');
     logger.log(`- FID: ${config.FARCASTER_FID}`);
     logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
-    logger.log(`- Enable Post: ${config.ENABLE_POST ? 'enabled' : 'disabled'}`);
+    logger.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
 
-    if (config.ENABLE_POST) {
+    if (config.ENABLE_CAST) {
       logger.log(
-        `- Post Interval: ${config.POST_INTERVAL_MIN}-${config.POST_INTERVAL_MAX} minutes`
+        `- Cast Interval: ${config.CAST_INTERVAL_MIN}-${config.CAST_INTERVAL_MAX} minutes`
       );
-      logger.log(`- Post Immediately: ${config.POST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
+      logger.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
     }
     logger.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
     logger.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);

@@ -1,14 +1,13 @@
 import {
   type IAgentRuntime,
   ModelType,
-  MessageType,
   type TestSuite,
   createUniqueUuid,
   logger,
   type TestCase,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
-import { FidRequest } from '../common/types';
+import { FidRequest, FarcasterMessageType } from '../common/types';
 import { FarcasterAgentManager } from '../managers/agent';
 import { TEST_IMAGE } from './test-utils';
 import { farcasterE2EScenarios } from './e2e/scenarios';
@@ -374,7 +373,7 @@ export class FarcasterTestSuite implements TestSuite {
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'test-room'),
         text: testText,
-        type: 'POST' as any,
+        type: FarcasterMessageType.CAST,
       });
 
       if (!message || !message.id) {
@@ -400,32 +399,32 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Farcaster service not found');
       }
 
-      const postService = service.getPostService(runtime.agentId);
-      if (!postService) {
-        throw new Error('PostService not initialized');
+      const castService = service.getCastService(runtime.agentId);
+      if (!castService) {
+        throw new Error('CastService not initialized');
       }
 
-      // Test getPosts
-      const posts = await postService.getPosts({
+      // Test getCasts
+      const casts = await castService.getCasts({
         agentId: runtime.agentId,
         limit: 5,
       });
 
-      logger.log(`Retrieved ${posts.length} posts from PostService`);
+      logger.log(`Retrieved ${casts.length} casts from CastService`);
 
-      // Test createPost
-      const testText = await this.generateRandomCastContent(runtime, 'post_service_test');
-      const post = await postService.createPost({
+      // Test createCast
+      const testText = await this.generateRandomCastContent(runtime, 'cast_service_test');
+      const cast = await castService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'test-room'),
         text: testText,
       });
 
-      if (!post || !post.id) {
-        throw new Error('Failed to create post via PostService');
+      if (!cast || !cast.id) {
+        throw new Error('Failed to create cast via CastService');
       }
 
-      logger.success('PostService test completed successfully');
+      logger.success('CastService test completed successfully');
     } catch (error) {
       throw new Error(`Error testing PostService: ${error}`);
     }
@@ -518,7 +517,7 @@ export class FarcasterTestSuite implements TestSuite {
             agentId: runtime.agentId,
             roomId: targetPost.roomId,
             text: 'Great post! Testing real interactions with ElizaOS 🎉',
-            type: MessageType.REPLY,
+            type: FarcasterMessageType.REPLY,
             replyToId: targetPost.metadata.castHash,
             metadata: {
               parentHash: targetPost.metadata.castHash,
@@ -560,7 +559,7 @@ export class FarcasterTestSuite implements TestSuite {
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'metadata-test'),
         text: 'Testing metadata tracking with ElizaOS',
-        type: MessageType.POST,
+        type: FarcasterMessageType.CAST,
       });
 
       if (!testMessage || !testMessage.metadata?.castHash) {

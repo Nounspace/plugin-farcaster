@@ -5,7 +5,6 @@ import {
   type State,
   logger,
   createUniqueUuid,
-  MessageType,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import type { FarcasterService } from '../service';
@@ -51,7 +50,7 @@ export const sendCastAction: Action = {
 
     // Check if Farcaster service is available
     const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
-    const isServiceAvailable = !!service?.getPostService(runtime.agentId);
+          const isServiceAvailable = !!service?.getCastService(runtime.agentId);
 
     return hasKeyword && isServiceAvailable;
   },
@@ -59,7 +58,7 @@ export const sendCastAction: Action = {
   handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
-      const postService = service?.getPostService(runtime.agentId);
+      const postService = service?.getCastService(runtime.agentId);
 
       if (!postService) {
         logger.error('[SEND_CAST] PostService not available');
@@ -85,31 +84,31 @@ export const sendCastAction: Action = {
         castContent = castContent.substring(0, 317) + '...';
       }
 
-      // Create the post
-      const post = await postService.createPost({
+      // Create the cast
+      const cast = await postService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
         text: castContent,
       });
 
-      logger.info(`[SEND_CAST] Successfully posted cast: ${post.id}`);
+      logger.info(`[SEND_CAST] Successfully posted cast: ${cast.id}`);
 
       // Store the cast in memory
       await runtime.createMemory(
         {
           agentId: runtime.agentId,
-          roomId: post.roomId,
+          roomId: cast.roomId,
           // userId removed - not part of Memory type
           entityId: runtime.agentId,
           content: {
             text: castContent,
             source: 'farcaster',
             metadata: {
-              castHash: post.metadata?.castHash,
+              castHash: cast.metadata?.castHash,
               action: 'SEND_CAST',
             },
           },
-          createdAt: post.timestamp,
+          createdAt: cast.timestamp,
         },
         'messages'
       );
