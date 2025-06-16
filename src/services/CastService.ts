@@ -305,7 +305,7 @@ export class FarcasterCastService implements CastServiceInterface {
           timestamp: cast.timestamp,
         },
         roomId,
-        userId: this.runtime.agentId,
+        userId: cast.userId,
         createdAt: Date.now(),
       };
 
