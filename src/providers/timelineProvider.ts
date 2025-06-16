@@ -26,7 +26,7 @@ export const farcasterTimelineProvider: Provider = {
       }
 
       // Get recent casts from timeline
-      const casts = await castService.getPosts({
+      const casts = await castService.getCasts({
         agentId: runtime.agentId,
         limit: 5,
       });

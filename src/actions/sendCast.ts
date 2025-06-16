@@ -85,7 +85,7 @@ export const sendCastAction: Action = {
       }
 
       // Create the cast
-      const cast = await postService.createPost({
+      const cast = await postService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
         text: castContent,

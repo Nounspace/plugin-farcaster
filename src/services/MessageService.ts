@@ -128,7 +128,7 @@ export class FarcasterMessageService implements IMessageService {
         userId: cast.profile.fid.toString(),
         username: cast.profile.username,
         text: cast.text,
-        type,
+        type: type as FarcasterMessageType,
         timestamp: cast.timestamp.getTime(),
         inReplyTo: inReplyTo ? castUuid({ hash: inReplyTo.hash, agentId }) : undefined,
         metadata: {

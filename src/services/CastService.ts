@@ -1,6 +1,8 @@
 import {
-  type UUID,
   logger,
+  type IAgentRuntime,
+  type UUID,
+  ModelType,
   createUniqueUuid,
 } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
@@ -8,11 +10,11 @@ import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
 import type { Cast } from '../common/types';
 
-// Simple interfaces for PostService compatibility  
-interface Post {
+// Simple interface for Cast data
+interface FarcasterCast {
   id: string;
   agentId: UUID;
-  roomId: string;
+  roomId: UUID;
   userId: string;
   username: string;
   text: string;
@@ -22,47 +24,93 @@ interface Post {
   metadata?: any;
 }
 
-interface CreatePostOptions {
-  agentId: UUID;
-  roomId: string;
-  text: string;
-  media?: any[];
-  inReplyTo?: string;
+export interface CastServiceInterface {
+  getCasts(params: { agentId: UUID; limit?: number; cursor?: string }): Promise<FarcasterCast[]>;
+
+  createCast(params: {
+    agentId: UUID;
+    roomId: UUID;
+    text: string;
+    media?: string[];
+    replyTo?: {
+      hash: string;
+      fid: number;
+    };
+  }): Promise<FarcasterCast>;
+
+  deleteCast(params: { agentId: UUID; castHash: string }): Promise<void>;
+
+  likeCast(params: { agentId: UUID; castHash: string }): Promise<void>;
+
+  unlikeCast(params: { agentId: UUID; castHash: string }): Promise<void>;
+
+  recast(params: { agentId: UUID; castHash: string }): Promise<void>;
+
+  unrecast(params: { agentId: UUID; castHash: string }): Promise<void>;
+
+  getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]>;
 }
 
-interface GetPostsOptions {
-  agentId: UUID;
-  roomId?: string;
-  limit?: number;
-}
+export class FarcasterCastService implements CastServiceInterface {
+  static serviceType = 'ICastService';
 
-interface IPostService {
-  createPost(options: CreatePostOptions): Promise<Post>;
-  getPosts(options: GetPostsOptions): Promise<Post[]>;
-  getPost(postId: string, agentId: UUID): Promise<Post | null>;
-  deletePost(postId: string, agentId: UUID): Promise<void>;
-  likePost(postId: string, agentId: UUID): Promise<void>;
-  unlikePost(postId: string, agentId: UUID): Promise<void>;
-  repost(postId: string, agentId: UUID): Promise<void>;
-  unrepost(postId: string, agentId: UUID): Promise<void>;
-  getMentions(agentId: UUID, options?: Partial<GetPostsOptions>): Promise<Post[]>;
-}
-
-export class FarcasterCastService implements IPostService {
   constructor(
     private client: FarcasterClient,
-    private runtime: any
+    private runtime: IAgentRuntime
   ) {}
 
-  async createPost(options: CreatePostOptions): Promise<Post> {
+  /**
+   * Get recent casts from the timeline
+   */
+  async getCasts(params: {
+    agentId: UUID;
+    limit?: number;
+    cursor?: string;
+  }): Promise<FarcasterCast[]> {
     try {
-      const { agentId, roomId, text, media, inReplyTo } = options;
+      const { timeline } = await this.client.getTimeline({
+        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        pageSize: params.limit || 50,
+      });
+
+      return timeline.map((cast) => this.castToFarcasterCast(cast, params.agentId));
+    } catch (error) {
+      logger.error('Failed to get casts', { params, error });
+      return [];
+    }
+  }
+
+  /**
+   * Create a new cast
+   */
+  async createCast(params: {
+    agentId: UUID;
+    roomId: UUID;
+    text: string;
+    media?: string[];
+    replyTo?: {
+      hash: string;
+      fid: number;
+    };
+  }): Promise<FarcasterCast> {
+    try {
+      // Generate cast content using AI if needed
+      let castText = params.text;
+
+      if (!castText || castText.trim() === '') {
+        castText = await this.generateCastContent();
+      }
+
+      // Ensure cast doesn't exceed character limit (320 characters for Farcaster)
+      if (castText.length > 320) {
+        castText = await this.truncateCast(castText);
+      }
 
       // Send the cast
       const casts = await this.client.sendCast({
-        content: { text },
-        inReplyTo: inReplyTo
-          ? { hash: inReplyTo, fid: this.runtime.config.FARCASTER_FID }
+        content: { text: castText },
+        inReplyTo: params.replyTo
+          ? { hash: params.replyTo.hash, fid: params.replyTo.fid }
           : undefined,
       });
 
@@ -71,15 +119,15 @@ export class FarcasterCastService implements IPostService {
       }
 
       const cast = neynarCastToCast(casts[0]);
-      const castResult: Post = {
-        id: castUuid({ hash: cast.hash, agentId }),
-        agentId,
-        roomId,
+      const farcasterCast: FarcasterCast = {
+        id: castUuid({ hash: cast.hash, agentId: params.agentId }),
+        agentId: params.agentId,
+        roomId: params.roomId,
         userId: cast.profile.fid.toString(),
         username: cast.profile.username,
         text: cast.text,
         timestamp: cast.timestamp.getTime(),
-        inReplyTo,
+        inReplyTo: params.replyTo?.hash,
         media: [], // TODO: Handle media upload when Farcaster API supports it
         metadata: {
           castHash: cast.hash,
@@ -89,147 +137,199 @@ export class FarcasterCastService implements IPostService {
         },
       };
 
-      return castResult;
+      // Store the cast in memory
+      await this.storeCastInMemory(params.roomId, farcasterCast);
+
+      return farcasterCast;
     } catch (error) {
-      logger.error('[Farcaster] Error creating cast:', error);
+      logger.error('Failed to create cast', { params, error });
       throw error;
     }
   }
 
-  async getPosts(options: GetPostsOptions): Promise<Post[]> {
+  /**
+   * Delete a cast
+   */
+  async deleteCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
-      const { agentId, roomId, limit = 20 } = options;
-
-      // Get timeline casts
-      const { timeline } = await this.client.getTimeline({
-        fid: this.runtime.config.FARCASTER_FID,
-        pageSize: limit,
-      });
-
-      const casts: Post[] = timeline
-        .filter((cast) => {
-          if (roomId) {
-            const castRoomId = createUniqueUuid(this.runtime, cast.threadId || cast.hash);
-            return castRoomId === roomId;
-          }
-          return true;
-        })
-        .map((cast) => this.castToPost(cast, agentId));
-
-      return casts;
+      // Farcaster doesn't support deleting casts via API
+      logger.warn('Cast deletion is not supported by the Farcaster API', { castHash: params.castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error fetching casts:', error);
-      return [];
+      logger.error('Failed to delete cast', { params, error });
+      throw error;
     }
   }
 
-  async getPost(postId: string, agentId: UUID): Promise<Post | null> {
+  /**
+   * Like a cast
+   */
+  async likeCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
-      // Extract cast hash from the post ID
-      const castHash = postId; // Simplified - in production, maintain proper mapping
-
-      const cast = await this.client.getCast(castHash);
-      const farcasterCast = neynarCastToCast(cast);
-
-      return this.castToPost(farcasterCast, agentId);
-    } catch (error) {
-      logger.error('[Farcaster] Error fetching cast:', error);
-      return null;
-    }
-  }
-
-  async deletePost(postId: string, agentId: UUID): Promise<void> {
-    // Farcaster doesn't support deleting casts via API
-    logger.warn('[Farcaster] Cast deletion is not supported by the Farcaster API');
-  }
-
-  async likePost(postId: string, agentId: UUID): Promise<void> {
-    try {
-      // Extract cast hash from the post ID
-      const castHash = postId; // In production, maintain proper ID mapping
-
       // TODO: Implement like functionality when Neynar API supports it
-      // For now, log the intent
-      logger.info(`[Farcaster] Like functionality not yet implemented for cast: ${castHash}`);
+      logger.info('Like functionality not yet implemented for cast', { castHash: params.castHash });
 
       // In a full implementation, this would call the Neynar API
-      // await this.client.neynar.likeCast({ signerUuid, castHash });
+      // await this.client.neynar.likeCast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error liking cast:', error);
+      logger.error('Failed to like cast', { params, error });
       throw error;
     }
   }
 
-  async unlikePost(postId: string, agentId: UUID): Promise<void> {
+  /**
+   * Unlike a cast
+   */
+  async unlikeCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
-      // Extract cast hash from the post ID
-      const castHash = postId;
-
       // TODO: Implement unlike functionality when Neynar API supports it
-      logger.info(`[Farcaster] Unlike functionality not yet implemented for cast: ${castHash}`);
+      logger.info('Unlike functionality not yet implemented for cast', { castHash: params.castHash });
 
       // In a full implementation, this would call the Neynar API
-      // await this.client.neynar.unlikeCast({ signerUuid, castHash });
+      // await this.client.neynar.unlikeCast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error unliking cast:', error);
+      logger.error('Failed to unlike cast', { params, error });
       throw error;
     }
   }
 
-  async repost(postId: string, agentId: UUID): Promise<void> {
+  /**
+   * Recast a cast
+   */
+  async recast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
-      // Farcaster uses "recasts" instead of reposts
-      const castHash = postId;
-
       // TODO: Implement recast functionality when Neynar API supports it
-      logger.info(`[Farcaster] Recast functionality not yet implemented for cast: ${castHash}`);
+      logger.info('Recast functionality not yet implemented for cast', { castHash: params.castHash });
 
       // In a full implementation, this would call the Neynar API
-      // await this.client.neynar.recast({ signerUuid, castHash });
+      // await this.client.neynar.recast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error recasting:', error);
+      logger.error('Failed to recast', { params, error });
       throw error;
     }
   }
 
-  async unrepost(postId: string, agentId: UUID): Promise<void> {
+  /**
+   * Remove a recast
+   */
+  async unrecast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
-      // Remove recast
-      const castHash = postId;
-
       // TODO: Implement unrecast functionality when Neynar API supports it
-      logger.info(
-        `[Farcaster] Remove recast functionality not yet implemented for cast: ${castHash}`
-      );
+      logger.info('Remove recast functionality not yet implemented for cast', { castHash: params.castHash });
 
       // In a full implementation, this would call the Neynar API
-      // await this.client.neynar.unrecast({ signerUuid, castHash });
+      // await this.client.neynar.unrecast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error('[Farcaster] Error removing recast:', error);
+      logger.error('Failed to remove recast', { params, error });
       throw error;
     }
   }
 
-  async getMentions(agentId: UUID, options?: Partial<GetPostsOptions>): Promise<Post[]> {
+  /**
+   * Get mentions
+   */
+  async getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]> {
     try {
       const mentions = await this.client.getMentions({
-        fid: this.runtime.config.FARCASTER_FID,
-        pageSize: options?.limit || 20,
+        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        pageSize: params.limit || 20,
       });
 
-      const mentionCasts: Post[] = mentions.map((castWithInteractions) => {
+      return mentions.map((castWithInteractions) => {
         const cast = neynarCastToCast(castWithInteractions);
-        return this.castToPost(cast, agentId);
+        return this.castToFarcasterCast(cast, params.agentId);
       });
-
-      return mentionCasts;
     } catch (error) {
-      logger.error('[Farcaster] Error fetching mentions:', error);
+      logger.error('Failed to get mentions', { params, error });
       return [];
     }
   }
 
-  private castToPost(cast: Cast, agentId: UUID): Post {
+  /**
+   * Generate cast content using AI
+   */
+  private async generateCastContent(): Promise<string> {
+    const prompt = `Generate an interesting and engaging Farcaster cast. It should be conversational, authentic, and under 320 characters. Topics can include technology, AI, crypto, decentralized social media, or general observations about life.`;
+
+    try {
+      const response = await this.runtime.useModel(ModelType.TEXT_SMALL, {
+        prompt,
+        maxTokens: 100,
+      });
+
+      return response as string;
+    } catch (error) {
+      logger.error('Failed to generate cast content', { error });
+      return 'Hello Farcaster! 👋';
+    }
+  }
+
+  /**
+   * Truncate cast to fit character limit
+   */
+  private async truncateCast(text: string): Promise<string> {
+    const prompt = `Shorten this text to under 320 characters while keeping the main message intact: "${text}"`;
+
+    try {
+      const response = await this.runtime.useModel(ModelType.TEXT_SMALL, {
+        prompt,
+        maxTokens: 100,
+      });
+
+      const truncated = response as string;
+
+      // Ensure it's actually under the limit
+      if (truncated.length > 320) {
+        return truncated.substring(0, 317) + '...';
+      }
+
+      return truncated;
+    } catch (error) {
+      logger.error('Failed to truncate cast', { error });
+      return text.substring(0, 317) + '...';
+    }
+  }
+
+  /**
+   * Store cast in agent memory
+   */
+  private async storeCastInMemory(roomId: UUID, cast: FarcasterCast): Promise<void> {
+    try {
+      const memory = {
+        id: createUniqueUuid(this.runtime, cast.id),
+        agentId: this.runtime.agentId,
+        content: {
+          text: cast.text,
+          castHash: cast.metadata?.castHash,
+          castId: cast.id,
+          author: cast.username,
+          timestamp: cast.timestamp,
+        },
+        roomId,
+        userId: this.runtime.agentId,
+        createdAt: Date.now(),
+      };
+
+      // Store memory using the runtime's API
+      // Note: The exact method may vary based on ElizaOS version
+      if (typeof (this.runtime as any).storeMemory === 'function') {
+        await (this.runtime as any).storeMemory(memory);
+      } else if (
+        (this.runtime as any).memory &&
+        typeof (this.runtime as any).memory.create === 'function'
+      ) {
+        await (this.runtime as any).memory.create(memory);
+      } else {
+        logger.warn('Memory storage method not available in runtime');
+      }
+    } catch (error) {
+      logger.error('Failed to store cast in memory', { error });
+    }
+  }
+
+  /**
+   * Convert internal Cast type to FarcasterCast
+   */
+  private castToFarcasterCast(cast: Cast, agentId: UUID): FarcasterCast {
     return {
       id: castUuid({ hash: cast.hash, agentId }),
       agentId,
