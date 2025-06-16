@@ -399,32 +399,32 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Farcaster service not found');
       }
 
-      const postService = service.getPostService(runtime.agentId);
-      if (!postService) {
-        throw new Error('PostService not initialized');
+      const castService = service.getCastService(runtime.agentId);
+      if (!castService) {
+        throw new Error('CastService not initialized');
       }
 
-      // Test getPosts
-      const posts = await postService.getPosts({
+      // Test getCasts
+      const casts = await castService.getCasts({
         agentId: runtime.agentId,
         limit: 5,
       });
 
-      logger.log(`Retrieved ${posts.length} posts from PostService`);
+      logger.log(`Retrieved ${casts.length} casts from CastService`);
 
-      // Test createPost
-      const testText = await this.generateRandomCastContent(runtime, 'post_service_test');
-      const post = await postService.createPost({
+      // Test createCast
+      const testText = await this.generateRandomCastContent(runtime, 'cast_service_test');
+      const cast = await castService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'test-room'),
         text: testText,
       });
 
-      if (!post || !post.id) {
-        throw new Error('Failed to create post via PostService');
+      if (!cast || !cast.id) {
+        throw new Error('Failed to create cast via CastService');
       }
 
-      logger.success('PostService test completed successfully');
+      logger.success('CastService test completed successfully');
     } catch (error) {
       throw new Error(`Error testing PostService: ${error}`);
     }

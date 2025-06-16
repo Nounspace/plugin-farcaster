@@ -218,6 +218,7 @@ describe('FarcasterConfigSchema', () => {
 
   it('should apply default values when optional fields are missing', () => {
     const minimalConfig = {
+      FARCASTER_DRY_RUN: false,
       FARCASTER_FID: 1,
       ENABLE_CAST: true,
       CAST_INTERVAL_MIN: 10,
@@ -360,18 +361,13 @@ describe('FarcasterGenericCastPayload Interface', () => {
     const validPayload: FarcasterGenericCastPayload = {
       memory: mockMemory,
       cast: mockCast,
-      userId: 'user123',
-      roomId: 'room456',
-      agentId: 'agent789',
-      content: {
-        text: 'Test content',
-        source: 'farcaster'
-      }
+      runtime: {} as any,
+      source: 'farcaster'
     };
 
     expect(validPayload.memory).toBeDefined();
     expect(validPayload.cast).toBeDefined();
-    expect(validPayload.userId).toBe('user123');
+    expect(validPayload.source).toBe('farcaster');
   });
 
   it('should handle minimal payload structure', () => {
@@ -380,7 +376,9 @@ describe('FarcasterGenericCastPayload Interface', () => {
 
     const minimalPayload: FarcasterGenericCastPayload = {
       memory: mockMemory,
-      cast: mockCast
+      cast: mockCast,
+      runtime: {} as any,
+      source: 'farcaster'
     };
 
     expect(minimalPayload.memory).toBeDefined();

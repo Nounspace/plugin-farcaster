@@ -50,7 +50,7 @@ export const sendCastAction: Action = {
 
     // Check if Farcaster service is available
     const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
-    const isServiceAvailable = !!service?.getPostService(runtime.agentId);
+          const isServiceAvailable = !!service?.getCastService(runtime.agentId);
 
     return hasKeyword && isServiceAvailable;
   },
@@ -58,7 +58,7 @@ export const sendCastAction: Action = {
   handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
-      const postService = service?.getPostService(runtime.agentId);
+      const postService = service?.getCastService(runtime.agentId);
 
       if (!postService) {
         logger.error('[SEND_CAST] PostService not available');
