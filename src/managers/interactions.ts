@@ -276,7 +276,7 @@ export class FarcasterInteractionManager {
         // save the memory so we don't process it again in mentions
         await this.runtime.createMemory(memory, 'messages');
       } catch (error) {
-        logger.error('Error creating ignoredmemory', error);
+        logger.error(`Error creating ignoredmemory: ${JSON.stringify(error)}`);
       }
       return;
     }

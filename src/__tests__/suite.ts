@@ -171,7 +171,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!profile || !profile.fid) {
         throw new Error('Profile fetch failed.');
       }
-      logger.log('Successfully fetched Farcaster profile:', profile);
+      logger.log('Successfully fetched Farcaster profile:', JSON.stringify(profile));
     } catch (error) {
       throw new Error(`Error fetching Farcaster profile: ${error}`);
     }

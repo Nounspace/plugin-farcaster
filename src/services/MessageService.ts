@@ -89,7 +89,7 @@ export class FarcasterMessageService implements IMessageService {
 
       return messages;
     } catch (error) {
-      logger.error('[Farcaster] Error fetching messages:', error);
+      logger.error(`[Farcaster] Error fetching messages: ${JSON.stringify(error)}`);
       return [];
     }
   }
@@ -149,7 +149,7 @@ export class FarcasterMessageService implements IMessageService {
 
       return message;
     } catch (error) {
-      logger.error('[Farcaster] Error sending message:', error);
+      logger.error(`[Farcaster] Error sending message: ${JSON.stringify(error)}`);
       throw error;
     }
   }
@@ -189,7 +189,7 @@ export class FarcasterMessageService implements IMessageService {
 
       return message;
     } catch (error) {
-      logger.error('[Farcaster] Error fetching message:', error);
+      logger.error(`[Farcaster] Error fetching message: ${JSON.stringify(error)}`);
       return null;
     }
   }

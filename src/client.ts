@@ -62,10 +62,10 @@ export class FarcasterClient {
       throw new Error(`[Farcaster] Error publishing [${cast}] parentCastId: [${parentCastId}]`);
     } catch (err) {
       if (isApiErrorResponse(err)) {
-        elizaLogger.error('Neynar error: ', err.response.data);
+        elizaLogger.error(`Neynar error: ${JSON.stringify(err.response.data)}`);
         throw err.response.data;
       } else {
-        elizaLogger.error('Error: ', err);
+        elizaLogger.error(`Error: ${JSON.stringify(err)}`);
         throw err;
       }
     }
@@ -131,7 +131,7 @@ export class FarcasterClient {
 
       return profile;
     } catch (error) {
-      elizaLogger.error('Error fetching profile:', error);
+      elizaLogger.error(`Error fetching profile: ${JSON.stringify(error)}`);
       throw error;
     }
   }
