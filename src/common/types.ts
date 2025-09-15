@@ -1,7 +1,7 @@
 import { Memory, MessagePayload } from '@elizaos/core';
 import { DEFAULT_MAX_CAST_LENGTH, DEFAULT_POLL_INTERVAL } from './constants';
 
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api/models/cast-with-interactions';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { z } from 'zod';
 
 export type Profile = {
@@ -89,5 +89,5 @@ export enum FarcasterMessageType {
 
 export interface FarcasterGenericCastPayload extends Omit<MessagePayload, 'message'> {
   memory: Memory;
-  cast: CastWithInteractions;
+  cast: NeynarCast;
 }

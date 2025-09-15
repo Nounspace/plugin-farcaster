@@ -1,6 +1,6 @@
 import { Content, elizaLogger } from '@elizaos/core';
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk';
-import { CastParamType, CastWithInteractions } from '@neynar/nodejs-sdk/build/api/index.js';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 // @ts-ignore
 import { LRUCache } from 'lru-cache';
 import { DEFAULT_CAST_CACHE_SIZE, DEFAULT_CAST_CACHE_TTL } from './common/constants';
@@ -8,7 +8,7 @@ import type { Cast, CastId, FidRequest, Profile } from './common/types';
 import { neynarCastToCast, splitPostContent } from './common/utils';
 
 // add global cast cache
-const castCache: LRUCache<string, CastWithInteractions> = new LRUCache({
+const castCache: LRUCache<string, NeynarCast> = new LRUCache({
   max: DEFAULT_CAST_CACHE_SIZE,
   ttl: DEFAULT_CAST_CACHE_TTL,
 });
@@ -33,14 +33,14 @@ export class FarcasterClient {
   }: {
     content: Content;
     inReplyTo?: CastId;
-  }): Promise<CastWithInteractions[]> {
+  }): Promise<NeynarCast[]> {
     const text = (content.text ?? '').trim();
     if (text.length === 0) {
       return [];
     }
 
     const chunks = splitPostContent(text);
-    const sent: CastWithInteractions[] = [];
+    const sent: NeynarCast[] = [];
 
     for (const chunk of chunks) {
       const result = await this.publishCast(chunk, inReplyTo);
@@ -49,7 +49,7 @@ export class FarcasterClient {
     return sent;
   }
 
-  private async publishCast(cast: string, parentCastId?: CastId): Promise<CastWithInteractions> {
+  private async publishCast(cast: string, parentCastId?: CastId): Promise<NeynarCast> {
     try {
       const result = await this.neynar.publishCast({
         signerUuid: this.signerUuid,
@@ -71,26 +71,25 @@ export class FarcasterClient {
     }
   }
 
-  async getCast(castHash: string): Promise<CastWithInteractions> {
+  async getCast(castHash: string): Promise<NeynarCast> {
     const cachedCast = castCache.get(castHash);
     if (cachedCast) {
       return cachedCast;
     }
 
-    const params = { identifier: castHash, type: CastParamType.Hash };
-    const response = await this.neynar.lookupCastByHashOrWarpcastUrl(params);
+    const response = await this.neynar.lookupCastByHashOrUrl({ identifier: castHash, type: 'hash' });
 
     castCache.set(castHash, response.cast);
 
     return response.cast;
   }
-  async getMentions(request: FidRequest): Promise<CastWithInteractions[]> {
+  async getMentions(request: FidRequest): Promise<NeynarCast[]> {
     const neynarMentionsResponse = await this.neynar.fetchAllNotifications({
       fid: request.fid,
       type: ['mentions', 'replies'],
       limit: request.pageSize,
     });
-    const mentions: CastWithInteractions[] = [];
+    const mentions: NeynarCast[] = [];
 
     for (const notification of neynarMentionsResponse.notifications) {
       const neynarCast = notification.cast;

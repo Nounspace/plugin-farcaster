@@ -106,22 +106,22 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
 
     // Log configuration on initialization
 
-    logger.log('Farcaster Client Configuration:');
-    logger.log(`- FID: ${config.FARCASTER_FID}`);
-    logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
-    logger.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
+    console.log('Farcaster Client Configuration:');
+    console.log(`- FID: ${config.FARCASTER_FID}`);
+    console.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
+    console.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
 
     if (config.ENABLE_CAST) {
-      logger.log(
+      console.log(
         `- Cast Interval: ${config.CAST_INTERVAL_MIN}-${config.CAST_INTERVAL_MAX} minutes`
       );
-      logger.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
+      console.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
     }
-    logger.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
-    logger.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);
+    console.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
+    console.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);
 
     if (isDryRun) {
-      logger.log('Farcaster client initialized in dry run mode - no actual casts should be posted');
+      console.log('Farcaster client initialized in dry run mode - no actual casts should be posted');
     }
 
     return config;

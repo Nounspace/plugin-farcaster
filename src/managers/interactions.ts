@@ -11,7 +11,7 @@ import {
   ModelType,
   UUID,
 } from '@elizaos/core';
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import type { FarcasterClient } from '../client';
 import { AsyncQueue } from '../common/asyncqueue';
 import { standardCastHandlerCallback } from '../common/callbacks';
@@ -215,7 +215,7 @@ export class FarcasterInteractionManager {
     cast,
   }: {
     agent: Profile;
-    cast: CastWithInteractions;
+    cast: NeynarCast;
     mention: Cast;
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
