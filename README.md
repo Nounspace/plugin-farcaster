@@ -71,7 +71,46 @@ Edit `.env` with your credentials:
 FARCASTER_FID=your-fid-here
 FARCASTER_NEYNAR_API_KEY=your-api-key-here
 FARCASTER_SIGNER_UUID=your-signer-uuid-here
+FARCASTER_MODE=polling  # or 'webhook' for real-time processing
 ```
+
+### 3. Webhook Setup (Recommended for Production)
+
+For real-time interaction processing instead of polling, you can configure webhooks:
+
+#### Step 1: Set Environment Variable
+```env
+FARCASTER_MODE=webhook
+```
+
+#### Step 2: Expose Your Server
+If running locally, use ngrok to expose your server:
+```bash
+# Install ngrok if you haven't already
+npm install -g ngrok
+
+# Expose your local server (default port 3000)
+ngrok http 3000
+```
+
+This will give you a URL like: `https://c7120f641530.ngrok-free.app`
+
+#### Step 3: Configure Neynar Webhook
+1. Go to [Neynar Webhook Dashboard](https://dev.neynar.com/webhook)
+2. Click "Create Webhook"
+3. Set the **Target URL** to: `https://your-ngrok-url.ngrok-free.app/farcaster/webhook`
+   - Example: `https://c7120f641530.ngrok-free.app/farcaster/webhook`
+4. Configure **Event Types**:
+   - Select `cast.created`
+5. Set **Filters**:
+   - **Mentioned users**: Add your Farcaster username
+   - **Parent cast authors**: Add your Farcaster username
+6. Click "Create Webhook"
+
+#### Step 4: Test Webhook
+Once configured, your agent will receive real-time notifications when:
+- Someone mentions your agent
+- Someone replies to your agent's casts
 
 ## Configuration
 
@@ -84,6 +123,7 @@ The plugin requires the following configurations, which can be set via environme
 | `FARCASTER_NEYNAR_API_KEY`     | Neynar API key for accessing Farcaster |
 | `FARCASTER_SIGNER_UUID` | Signer UUID for your Farcaster account |
 | `FARCASTER_FID`                | Your Farcaster FID (identifier)        |
+| `FARCASTER_MODE`               | Interaction mode: `polling` or `webhook` |
 
 ### Optional Settings
 
@@ -115,7 +155,8 @@ The plugin requires the following configurations, which can be set via environme
   "settings": {
     "FARCASTER_FID": "123456",
     "FARCASTER_NEYNAR_API_KEY": "your-api-key",
-    "FARCASTER_SIGNER_UUID": "your-signer-uuid"
+    "FARCASTER_SIGNER_UUID": "your-signer-uuid",
+    "FARCASTER_MODE": "webhook"
   }
 }
 ```
