@@ -101,6 +101,12 @@ export class FarcasterInteractionManager {
     const castData = webhookData.data;
     const agentFid = this.config.FARCASTER_FID;
 
+    // Validate required cast data structure
+    if (!castData.author || !castData.hash || typeof castData.author.fid !== 'number') {
+      logger.warn('Invalid webhook cast data structure - missing author, hash, or author.fid');
+      return;
+    }
+
     // Skip if it's from the agent itself
     if (castData.author.fid === agentFid) {
       logger.debug('Skipping webhook event from agent itself');
@@ -114,12 +120,16 @@ export class FarcasterInteractionManager {
     const isReply = castData.parent_hash && castData.parent_author?.fid === agentFid;
 
     if (isMention) {
-      logger.info(`Processing webhook MENTION from @${castData.author.username}: "${castData.text}"`);
+      const username = castData.author.username || 'unknown';
+      const text = castData.text || '';
+      logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
       // Fetch the proper NeynarCast object using the cast hash
       const neynarCast = await this.client.getCast(castData.hash);
       await this.processMention(neynarCast);
     } else if (isReply) {
-      logger.info(`Processing webhook REPLY from @${castData.author.username}: "${castData.text}"`);
+      const username = castData.author.username || 'unknown';
+      const text = castData.text || '';
+      logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
       // Fetch the proper NeynarCast object using the cast hash
       const neynarCast = await this.client.getCast(castData.hash);
       await this.processReply(neynarCast);
