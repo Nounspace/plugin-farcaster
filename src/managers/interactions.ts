@@ -115,10 +115,14 @@ export class FarcasterInteractionManager {
 
     if (isMention) {
       logger.info(`Processing webhook MENTION from @${castData.author.username}: "${castData.text}"`);
-      await this.processMention(castData);
+      // Fetch the proper NeynarCast object using the cast hash
+      const neynarCast = await this.client.getCast(castData.hash);
+      await this.processMention(neynarCast);
     } else if (isReply) {
       logger.info(`Processing webhook REPLY from @${castData.author.username}: "${castData.text}"`);
-      await this.processReply(castData);
+      // Fetch the proper NeynarCast object using the cast hash
+      const neynarCast = await this.client.getCast(castData.hash);
+      await this.processReply(neynarCast);
     } else {
       logger.debug('Webhook cast is neither mention nor reply to agent');
     }
