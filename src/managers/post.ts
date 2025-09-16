@@ -34,7 +34,7 @@ export class FarcasterCastManager {
     this.isRunning = true;
 
     // never await this, it will block forever
-    // void this.runPeriodically();
+    void this.runPeriodically();
   }
 
   public async stop() {
