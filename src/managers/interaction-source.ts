@@ -2,6 +2,7 @@ import { logger, type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import type { FarcasterConfig } from '../common/types';
 import { FarcasterInteractionManager } from './interactions';
+import { neynarCastToCast, castUuid } from '../common/utils';
 
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
@@ -76,6 +77,25 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
 
     for (const cast of mentions) {
       try {
+        const mention = neynarCastToCast(cast);
+        const memoryId = castUuid({ agentId: this.runtime.agentId, hash: mention.hash });
+
+        // Deduplication check - skip if already processed
+        if (await this.runtime.getMemoryById(memoryId)) {
+          continue;
+        }
+
+        logger.info('New Cast found', mention.hash);
+
+        // Filter out the agent mentions (self-posts)
+        if (mention.authorFid === agentFid) {
+          const memory = await this.processor.ensureCastConnection(mention);
+          await this.runtime.addEmbeddingToMemory(memory);
+          await this.runtime.createMemory(memory, 'messages');
+          continue;
+        }
+
+        // Process mention through the processor
         await this.processor.processMention(cast);
       } catch (error) {
         logger.error('[Farcaster] Error processing mention:', error instanceof Error ? error.message : String(error));

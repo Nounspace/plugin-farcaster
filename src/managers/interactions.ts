@@ -124,7 +124,7 @@ export class FarcasterInteractionManager {
     }
   }
 
-  private async ensureCastConnection(cast: Cast): Promise<Memory> {
+  public async ensureCastConnection(cast: Cast): Promise<Memory> {
     return await this.asyncQueue.submit(async () => {
       const memoryId = castUuid({ agentId: this.runtime.agentId, hash: cast.hash });
       const conversationId = cast.threadId ?? cast.inReplyTo?.hash ?? cast.hash;
