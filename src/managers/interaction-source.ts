@@ -2,7 +2,6 @@ import { logger, type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import type { FarcasterConfig } from '../common/types';
 import { FarcasterInteractionManager } from './interactions';
-import { neynarCastToCast } from '../common/utils';
 
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
@@ -14,7 +13,7 @@ interface FarcasterInteractionSourceParams {
 /**
  * Abstract base class for Farcaster interaction sources
  */
-abstract class FarcasterInteractionSource {
+export abstract class FarcasterInteractionSource {
   protected client: FarcasterClient;
   protected runtime: IAgentRuntime;
   protected config: FarcasterConfig;

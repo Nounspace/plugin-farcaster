@@ -26,6 +26,7 @@ import {
   type Profile,
 } from '../common/types';
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
+import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
 
 interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
@@ -35,19 +36,34 @@ interface FarcasterInteractionManagerParams {
 
 /**
  * Processes Farcaster interactions (mentions, replies) regardless of source (polling/webhook)
- * This class contains the core logic for handling interactions
+ * This class contains the core logic for handling interactions and manages the interaction source
  */
 export class FarcasterInteractionManager {
   private client: FarcasterClient;
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;
   private asyncQueue: AsyncQueue;
+  
+  // Mode and source management
+  public readonly mode: 'polling' | 'webhook';
+  public readonly source: FarcasterInteractionSource;
 
   constructor(opts: FarcasterInteractionManagerParams) {
     this.client = opts.client;
     this.runtime = opts.runtime;
     this.config = opts.config;
     this.asyncQueue = new AsyncQueue(1);
+    
+    // Initialize mode and source
+    this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
+    this.source = createFarcasterInteractionSource({
+      client: this.client,
+      runtime: this.runtime,
+      config: this.config,
+      processor: this
+    });
+    
+    logger.info(`Farcaster interaction mode: ${this.mode}`);
   }
 
   /**
@@ -242,17 +258,17 @@ export class FarcasterInteractionManager {
       prompt: shouldRespondPrompt,
     });
 
-    const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0];
-    if (responseActions !== 'RESPOND') {
-      logger.info(`Not responding to cast based on shouldRespond decision: ${responseActions}`);
-      try {
-        // save the memory so we don't process it again in mentions
-        await this.runtime.createMemory(memory, 'messages');
-      } catch (error) {
-        logger.error(`Error creating ignoredmemory: ${JSON.stringify(error)}`);
-      }
-      return;
-    }
+    // const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0];
+    // if (responseActions !== 'RESPOND') {
+    //   logger.info(`Not responding to cast based on shouldRespond decision: ${responseActions}`);
+    //   try {
+    //     // save the memory so we don't process it again in mentions
+    //     await this.runtime.createMemory(memory, 'messages');
+    //   } catch (error) {
+    //     logger.error(`Error creating ignoredmemory: ${JSON.stringify(error)}`);
+    //   }
+    //   return;
+    // }
 
     // setup callback for the response
     const callback = standardCastHandlerCallback({
@@ -289,4 +305,21 @@ export class FarcasterInteractionManager {
     };
     this.runtime.emitEvent(FarcasterEventTypes.MENTION_RECEIVED, mentionPayload);
   }
+
+  /**
+   * Start the interaction manager (delegates to the appropriate source)
+   */
+  async start(): Promise<void> {
+    logger.info(`Starting Farcaster interaction manager in ${this.mode} mode`);
+    await this.source.start();
+  }
+
+  /**
+   * Stop the interaction manager
+   */
+  async stop(): Promise<void> {
+    logger.info('Stopping Farcaster interaction manager');
+    await this.source.stop();
+  }
+
 }

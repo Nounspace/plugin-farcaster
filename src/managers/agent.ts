@@ -4,7 +4,6 @@ import { FarcasterClient } from '../client';
 import { type FarcasterConfig } from '../common/types';
 import { FarcasterCastManager } from './post';
 import { FarcasterInteractionManager } from './interactions';
-import { createFarcasterInteractionSource, FarcasterWebhookSource } from './interaction-source';
 
 /**
  * A manager that orchestrates all Farcaster operations:
@@ -16,9 +15,7 @@ export class FarcasterAgentManager {
   readonly runtime: IAgentRuntime;
   readonly client: FarcasterClient;
   readonly casts: FarcasterCastManager;
-  readonly processor: FarcasterInteractionManager;
-  readonly source: any; // FarcasterInteractionSource
-  readonly webhookSource?: FarcasterWebhookSource; // For webhook access
+  readonly interactions: FarcasterInteractionManager;
   readonly config: FarcasterConfig;
 
   constructor(runtime: IAgentRuntime, config: FarcasterConfig) {
@@ -34,30 +31,16 @@ export class FarcasterAgentManager {
 
     logger.success('Farcaster Neynar client initialized.');
 
-    // Initialize the new architecture
-    this.processor = new FarcasterInteractionManager({ client, runtime, config });
-    this.source = createFarcasterInteractionSource({ 
-      client, 
-      runtime, 
-      config, 
-      processor: this.processor 
-    });
-
-    // Store webhook source reference if in webhook mode
-    if (config.FARCASTER_MODE === 'webhook' && this.source instanceof FarcasterWebhookSource) {
-      this.webhookSource = this.source;
-    }
-
+    // Initialize managers
+    this.interactions = new FarcasterInteractionManager({ client, runtime, config });
     this.casts = new FarcasterCastManager({ client, runtime, config });
-
-    logger.info(`Farcaster interaction mode: ${config.FARCASTER_MODE}`);
   }
 
   async start() {
-    await Promise.all([this.casts.start(), this.source.start()]);
+    await Promise.all([this.casts.start(), this.interactions.start()]);
   }
 
   async stop() {
-    await Promise.all([this.casts.stop(), this.source.stop()]);
+    await Promise.all([this.casts.stop(), this.interactions.stop()]);
   }
 }

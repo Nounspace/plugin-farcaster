@@ -17,11 +17,14 @@ export const farcasterWebhookRoutes: Route[] = [
           // Get the agent manager for this runtime
           const agentManager = farcasterService.managers?.get?.(runtime.agentId);
           
-          if (agentManager && agentManager.webhookSource) {
-            console.log("Processing webhook through FarcasterAgentManager...");
-            await agentManager.webhookSource.processWebhookData(webhookData);
-          } else if (agentManager) {
-            console.warn(`Webhook source not available - FARCASTER_MODE is '${agentManager.config?.FARCASTER_MODE}', expected 'webhook'`);
+          if (agentManager && agentManager.interactions) {
+            // Check if we're in webhook mode
+            if (agentManager.interactions.mode === 'webhook') {
+              console.log("Processing webhook through FarcasterInteractionManager...");
+              await agentManager.interactions.processWebhookData(webhookData);
+            } else {
+              console.warn(`Agent is in ${agentManager.interactions.mode} mode, not webhook mode`);
+            }
           } else {
             console.warn(`FarcasterAgentManager not found for agent ${runtime.agentId}`);
           }
