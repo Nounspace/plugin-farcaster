@@ -97,7 +97,7 @@ This will give you a URL like: `https://c7120f641530.ngrok-free.app`
 
 #### Step 3: Configure Neynar Webhook
 1. Go to [Neynar Webhook Dashboard](https://dev.neynar.com/webhook)
-2. Click "Create Webhook"
+2. Click "New webhook"
 3. Set the **Target URL** to: `https://your-ngrok-url.ngrok-free.app/farcaster/webhook`
    - Example: `https://c7120f641530.ngrok-free.app/farcaster/webhook`
 4. Configure **Event Types**:
@@ -105,7 +105,7 @@ This will give you a URL like: `https://c7120f641530.ngrok-free.app`
 5. Set **Filters**:
    - **Mentioned users**: Add your Farcaster username
    - **Parent cast authors**: Add your Farcaster username
-6. Click "Create Webhook"
+
 
 #### Step 4: Test Webhook
 Once configured, your agent will receive real-time notifications when:
