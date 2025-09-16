@@ -56,6 +56,9 @@ export const FarcasterConfigSchema = z.object({
   FARCASTER_FID: z.number().int().min(1, 'Farcaster fid is required'),
   MAX_CAST_LENGTH: z.number().int().default(DEFAULT_MAX_CAST_LENGTH),
   FARCASTER_POLL_INTERVAL: z.number().int().default(DEFAULT_POLL_INTERVAL),
+  
+  // Webhook configuration
+  FARCASTER_MODE: z.enum(['polling', 'webhook']).default('polling'),
   ENABLE_CAST: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),

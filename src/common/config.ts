@@ -98,6 +98,12 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         runtime.getSetting('FARCASTER_HUB_URL') ||
         process.env.FARCASTER_HUB_URL ||
         'hub.pinata.cloud',
+      
+      // Webhook configuration
+      FARCASTER_MODE: 
+        runtime.getSetting('FARCASTER_MODE') || 
+        process.env.FARCASTER_MODE || 
+        'polling',
     };
 
     const config = FarcasterConfigSchema.parse(farcasterConfig);
