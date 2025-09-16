@@ -176,14 +176,35 @@ export class FarcasterInteractionManager {
     });
   }
 
-  private async buildThreadForCast(cast: Cast, existingMemoryIds: Set<UUID>): Promise<Cast[]> {
-    const client = this.client;
+  private async buildThreadForCast(cast: Cast, skipMemoryId: Set<UUID>): Promise<Cast[]> {
     const thread: Cast[] = [];
+    const visited: Set<string> = new Set();
+    const client = this.client;
+    const runtime = this.runtime;
+    const self = this;
 
-    const processThread = async (currentCast: Cast) => {
-      const memoryId = castUuid({ agentId: this.runtime.agentId, hash: currentCast.hash });
-      if (existingMemoryIds.has(memoryId)) {
+    async function processThread(currentCast: Cast) {
+      const memoryId = castUuid({ hash: currentCast.hash, agentId: runtime.agentId });
+
+      if (visited.has(currentCast.hash) || skipMemoryId.has(memoryId)) {
         return;
+      }
+
+      visited.add(currentCast.hash);
+
+      // Check if the current cast has already been saved
+      const memory = await runtime.getMemoryById(memoryId);
+
+      if (!memory) {
+        logger.info('Creating memory for cast', currentCast.hash);
+        const memory = await self.ensureCastConnection(currentCast);
+        await runtime.createMemory(memory, 'messages');
+        runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED, {
+          runtime,
+          memory,
+          cast: currentCast,
+          source: FARCASTER_SOURCE,
+        });
       }
 
       thread.unshift(currentCast);
