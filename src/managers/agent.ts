@@ -9,18 +9,16 @@ import { FarcasterInteractionManager } from './interactions';
  * A manager that orchestrates all Farcaster operations:
  * - client: base operations (Neynar client, hub connection, etc.)
  * - posts: autonomous posting logic
- * - interactions: handling mentions, replies, likes, etc. (via processor + source)
+ * - interactions: handling mentions, replies, likes, etc.
  */
 export class FarcasterAgentManager {
   readonly runtime: IAgentRuntime;
   readonly client: FarcasterClient;
   readonly casts: FarcasterCastManager;
   readonly interactions: FarcasterInteractionManager;
-  readonly config: FarcasterConfig;
 
   constructor(runtime: IAgentRuntime, config: FarcasterConfig) {
     this.runtime = runtime;
-    this.config = config;
     const signerUuid = config.FARCASTER_SIGNER_UUID;
 
     const neynarConfig = new Configuration({ apiKey: config.FARCASTER_NEYNAR_API_KEY });
