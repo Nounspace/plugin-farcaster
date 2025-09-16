@@ -113,6 +113,13 @@ export class FarcasterInteractionManager {
       return;
     }
 
+    // Deduplication check - skip if already processed
+    const memoryId = castUuid({ agentId: this.runtime.agentId, hash: castData.hash });
+    if (await this.runtime.getMemoryById(memoryId)) {
+      logger.debug('Skipping already processed webhook cast:', castData.hash);
+      return;
+    }
+
     // Check if it's a mention
     const isMention = castData.mentioned_profiles?.some((profile: any) => profile.fid === agentFid);
     
@@ -123,16 +130,26 @@ export class FarcasterInteractionManager {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
       logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
-      // Fetch the proper NeynarCast object using the cast hash
-      const neynarCast = await this.client.getCast(castData.hash);
-      await this.processMention(neynarCast);
+      
+      try {
+        // Fetch the proper NeynarCast object using the cast hash
+        const neynarCast = await this.client.getCast(castData.hash);
+        await this.processMention(neynarCast);
+      } catch (error) {
+        logger.error(`Failed to process webhook mention from @${username}:`, error instanceof Error ? error.message : String(error));
+      }
     } else if (isReply) {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
       logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
-      // Fetch the proper NeynarCast object using the cast hash
-      const neynarCast = await this.client.getCast(castData.hash);
-      await this.processReply(neynarCast);
+      
+      try {
+        // Fetch the proper NeynarCast object using the cast hash
+        const neynarCast = await this.client.getCast(castData.hash);
+        await this.processReply(neynarCast);
+      } catch (error) {
+        logger.error(`Failed to process webhook reply from @${username}:`, error instanceof Error ? error.message : String(error));
+      }
     } else {
       logger.debug('Webhook cast is neither mention nor reply to agent');
     }
