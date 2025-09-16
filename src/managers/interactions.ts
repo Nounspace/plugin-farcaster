@@ -27,6 +27,7 @@ import {
 } from '../common/types';
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
 import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
+import type { IInteractionProcessor } from './interaction-processor';
 
 interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
@@ -38,7 +39,7 @@ interface FarcasterInteractionManagerParams {
  * Processes Farcaster interactions (mentions, replies) regardless of source (polling/webhook)
  * This class contains the core logic for handling interactions and manages the interaction source
  */
-export class FarcasterInteractionManager {
+export class FarcasterInteractionManager implements IInteractionProcessor {
   private client: FarcasterClient;
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;

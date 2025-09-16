@@ -1,14 +1,14 @@
 import { logger, type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import type { FarcasterConfig } from '../common/types';
-import { FarcasterInteractionManager } from './interactions';
+import type { IInteractionProcessor } from './interaction-processor';
 import { neynarCastToCast, castUuid } from '../common/utils';
 
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
-  processor: FarcasterInteractionManager;
+  processor: IInteractionProcessor;
 }
 
 /**
@@ -18,7 +18,7 @@ export abstract class FarcasterInteractionSource {
   protected client: FarcasterClient;
   protected runtime: IAgentRuntime;
   protected config: FarcasterConfig;
-  protected processor: FarcasterInteractionManager;
+  protected processor: IInteractionProcessor;
   protected isRunning: boolean = false;
 
   constructor(params: FarcasterInteractionSourceParams) {
