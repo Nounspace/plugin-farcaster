@@ -11,7 +11,7 @@ import {
   ModelType,
   UUID,
 } from '@elizaos/core';
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import type { FarcasterClient } from '../client';
 import { AsyncQueue } from '../common/asyncqueue';
 import { standardCastHandlerCallback } from '../common/callbacks';
@@ -26,60 +26,137 @@ import {
   type Profile,
 } from '../common/types';
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
-interface FarcasterInteractionParams {
+import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
+import type { IInteractionProcessor } from './interaction-processor';
+
+interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
 }
 
-export class FarcasterInteractionManager {
-  private timeout: ReturnType<typeof setTimeout> | undefined;
-  private isRunning: boolean = false;
+/**
+ * Processes Farcaster interactions (mentions, replies) regardless of source (polling/webhook)
+ * This class contains the core logic for handling interactions and manages the interaction source
+ */
+export class FarcasterInteractionManager implements IInteractionProcessor {
   private client: FarcasterClient;
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;
-
   private asyncQueue: AsyncQueue;
+  
+  // Mode and source management
+  public readonly mode: 'polling' | 'webhook';
+  public readonly source: FarcasterInteractionSource;
 
-  constructor(opts: FarcasterInteractionParams) {
+  constructor(opts: FarcasterInteractionManagerParams) {
     this.client = opts.client;
     this.runtime = opts.runtime;
     this.config = opts.config;
     this.asyncQueue = new AsyncQueue(1);
+    
+    // Initialize mode and source
+    this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
+    this.source = createFarcasterInteractionSource({
+      client: this.client,
+      runtime: this.runtime,
+      config: this.config,
+      processor: this
+    });
+    
+    logger.info(`Farcaster interaction mode: ${this.mode}`);
   }
 
-  public async start(): Promise<void> {
-    logger.info('Starting Farcaster interactions');
-    if (this.isRunning) {
+  /**
+   * Process a mention from any source (webhook or polling)
+   */
+  async processMention(cast: NeynarCast): Promise<void> {
+    const agentFid = this.config.FARCASTER_FID;
+    const agent = await this.client.getProfile(agentFid);
+    const mention = neynarCastToCast(cast);
+    
+    await this.handleMentionCast({ agent, mention, cast });
+  }
+
+  /**
+   * Process a reply from any source (webhook or polling)
+   */
+  async processReply(cast: NeynarCast): Promise<void> {
+    // Similar to processMention but for replies
+    const agentFid = this.config.FARCASTER_FID;
+    const agent = await this.client.getProfile(agentFid);
+    const reply = neynarCastToCast(cast);
+    
+    await this.handleMentionCast({ agent, mention: reply, cast });
+  }
+
+  /**
+   * Process webhook data from Neynar
+   */
+  async processWebhookData(webhookData: any): Promise<void> {
+    if (webhookData.type !== 'cast.created' || !webhookData.data) {
+      logger.debug('Ignoring non-cast webhook event:', webhookData.type);
       return;
     }
 
-    this.isRunning = true;
+    const castData = webhookData.data;
+    const agentFid = this.config.FARCASTER_FID;
 
-    // never await this, it will block forever
-    void this.runPeriodically();
-  }
+    // Validate required cast data structure
+    if (!castData.author || !castData.hash || typeof castData.author.fid !== 'number') {
+      logger.warn('Invalid webhook cast data structure - missing author, hash, or author.fid');
+      return;
+    }
 
-  public async stop(): Promise<void> {
-    if (this.timeout) clearTimeout(this.timeout);
-    this.isRunning = false;
-  }
+    // Skip if it's from the agent itself
+    if (castData.author.fid === agentFid) {
+      logger.debug('Skipping webhook event from agent itself');
+      return;
+    }
 
-  private async runPeriodically(): Promise<void> {
-    while (this.isRunning) {
+    // Deduplication check - skip if already processed
+    const memoryId = castUuid({ agentId: this.runtime.agentId, hash: castData.hash });
+    if (await this.runtime.getMemoryById(memoryId)) {
+      logger.debug('Skipping already processed webhook cast:', castData.hash);
+      return;
+    }
+
+    // Check if it's a mention
+    const isMention = castData.mentioned_profiles?.some((profile: any) => profile.fid === agentFid);
+    
+    // Check if it's a reply to the agent
+    const isReply = castData.parent_hash && castData.parent_author?.fid === agentFid;
+
+    if (isMention) {
+      const username = castData.author.username || 'unknown';
+      const text = castData.text || '';
+      logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
+      
       try {
-        await this.handleInteractions();
-
-        // now sleep for the configured interval
-        const delay = this.config.FARCASTER_POLL_INTERVAL * 1000;
-        await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
+        // Fetch the proper NeynarCast object using the cast hash
+        const neynarCast = await this.client.getCast(castData.hash);
+        await this.processMention(neynarCast);
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic interactions:', this.runtime.agentId, error);
+        logger.error(`Failed to process webhook mention from @${username}:`, error instanceof Error ? error.message : String(error));
       }
+    } else if (isReply) {
+      const username = castData.author.username || 'unknown';
+      const text = castData.text || '';
+      logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
+      
+      try {
+        // Fetch the proper NeynarCast object using the cast hash
+        const neynarCast = await this.client.getCast(castData.hash);
+        await this.processReply(neynarCast);
+      } catch (error) {
+        logger.error(`Failed to process webhook reply from @${username}:`, error instanceof Error ? error.message : String(error));
+      }
+    } else {
+      logger.debug('Webhook cast is neither mention nor reply to agent');
     }
   }
 
-  private async ensureCastConnection(cast: Cast): Promise<Memory> {
+  public async ensureCastConnection(cast: Cast): Promise<Memory> {
     return await this.asyncQueue.submit(async () => {
       const memoryId = castUuid({ agentId: this.runtime.agentId, hash: cast.hash });
       const conversationId = cast.threadId ?? cast.inReplyTo?.hash ?? cast.hash;
@@ -116,7 +193,6 @@ export class FarcasterInteractionManager {
         agentId: this.runtime.agentId,
         content: {
           text: cast.text,
-          // need to pull imageUrls
           inReplyTo: cast.inReplyTo?.hash
             ? castUuid({ agentId: this.runtime.agentId, hash: cast.inReplyTo.hash })
             : undefined,
@@ -128,45 +204,11 @@ export class FarcasterInteractionManager {
         createdAt: cast.timestamp.getTime(),
       };
 
-      // no need to store the memory as it'll be stored in bootstrap side
-
       return memory;
     });
   }
 
-  private async handleInteractions(): Promise<void> {
-    const agentFid = this.config.FARCASTER_FID;
-    const [mentions, agent] = await Promise.all([
-      this.client.getMentions({
-        fid: agentFid,
-        pageSize: 20,
-      }),
-      this.client.getProfile(agentFid),
-    ]);
-
-    for (const cast of mentions) {
-      const mention = neynarCastToCast(cast);
-      const memoryId = castUuid({ agentId: this.runtime.agentId, hash: mention.hash });
-
-      if (await this.runtime.getMemoryById(memoryId)) {
-        continue;
-      }
-
-      logger.info('New Cast found', mention.hash);
-
-      // filter out the agent mentions
-      if (mention.authorFid === agentFid) {
-        const memory = await this.ensureCastConnection(mention);
-        await this.runtime.addEmbeddingToMemory(memory);
-        await this.runtime.createMemory(memory, 'messages');
-        continue;
-      }
-
-      await this.handleMentionCast({ agent, mention, cast });
-    }
-  }
-
-  async buildThreadForCast(cast: Cast, skipMemoryId: Set<UUID>): Promise<Cast[]> {
+  private async buildThreadForCast(cast: Cast, skipMemoryId: Set<UUID>): Promise<Cast[]> {
     const thread: Cast[] = [];
     const visited: Set<string> = new Set();
     const client = this.client;
@@ -215,7 +257,7 @@ export class FarcasterInteractionManager {
     cast,
   }: {
     agent: Profile;
-    cast: CastWithInteractions;
+    cast: NeynarCast;
     mention: Cast;
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
@@ -309,11 +351,28 @@ export class FarcasterInteractionManager {
       memory,
       cast,
       source: FARCASTER_SOURCE,
-      callback: async (ontent: Content, _files: any[]) => {
+      callback: async (content: Content, _files: any[]) => {
         logger.info('[Farcaster] mention received response:', response);
         return [];
       },
     };
     this.runtime.emitEvent(FarcasterEventTypes.MENTION_RECEIVED, mentionPayload);
   }
+
+  /**
+   * Start the interaction manager (delegates to the appropriate source)
+   */
+  async start(): Promise<void> {
+    logger.info(`Starting Farcaster interaction manager in ${this.mode} mode`);
+    await this.source.start();
+  }
+
+  /**
+   * Stop the interaction manager
+   */
+  async stop(): Promise<void> {
+    logger.info('Stopping Farcaster interaction manager');
+    await this.source.stop();
+  }
+
 }

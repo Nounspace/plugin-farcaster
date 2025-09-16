@@ -1,7 +1,7 @@
 import { Memory, MessagePayload } from '@elizaos/core';
 import { DEFAULT_MAX_CAST_LENGTH, DEFAULT_POLL_INTERVAL } from './constants';
 
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api/models/cast-with-interactions';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { z } from 'zod';
 
 export type Profile = {
@@ -56,6 +56,9 @@ export const FarcasterConfigSchema = z.object({
   FARCASTER_FID: z.number().int().min(1, 'Farcaster fid is required'),
   MAX_CAST_LENGTH: z.number().int().default(DEFAULT_MAX_CAST_LENGTH),
   FARCASTER_POLL_INTERVAL: z.number().int().default(DEFAULT_POLL_INTERVAL),
+  
+  // Webhook configuration
+  FARCASTER_MODE: z.enum(['polling', 'webhook']).default('polling'),
   ENABLE_CAST: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
@@ -89,5 +92,5 @@ export enum FarcasterMessageType {
 
 export interface FarcasterGenericCastPayload extends Omit<MessagePayload, 'message'> {
   memory: Memory;
-  cast: CastWithInteractions;
+  cast: NeynarCast;
 }
