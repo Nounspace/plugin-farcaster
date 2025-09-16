@@ -2,8 +2,8 @@ import { logger, type IAgentRuntime } from '@elizaos/core';
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { FarcasterClient } from '../client';
 import { type FarcasterConfig } from '../common/types';
-import { FarcasterInteractionManager } from './interactions';
 import { FarcasterCastManager } from './post';
+import { FarcasterInteractionManager } from './interactions';
 
 /**
  * A manager that orchestrates all Farcaster operations:
@@ -22,18 +22,16 @@ export class FarcasterAgentManager {
     const signerUuid = config.FARCASTER_SIGNER_UUID;
 
     const neynarConfig = new Configuration({ apiKey: config.FARCASTER_NEYNAR_API_KEY });
-
     const neynar = new NeynarAPIClient(neynarConfig);
-
     const client = new FarcasterClient({ neynar, signerUuid });
 
     this.client = client;
 
     logger.success('Farcaster Neynar client initialized.');
 
-    this.casts = new FarcasterCastManager({ client, runtime, config });
-
+    // Initialize managers
     this.interactions = new FarcasterInteractionManager({ client, runtime, config });
+    this.casts = new FarcasterCastManager({ client, runtime, config });
   }
 
   async start() {

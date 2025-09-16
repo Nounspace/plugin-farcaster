@@ -103,7 +103,7 @@ export class FarcasterCastManager {
         source: FARCASTER_SOURCE,
       });
     } catch (error) {
-      logger.error('Error generating new cast:', error);
+      logger.error(`Error generating new cast: ${JSON.stringify(error)}`);
     }
   }
 }

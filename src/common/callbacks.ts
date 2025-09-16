@@ -1,5 +1,5 @@
 import { Content, HandlerCallback, IAgentRuntime, logger, Memory, UUID } from '@elizaos/core';
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { FarcasterClient } from '../client';
 import { CastId, FarcasterConfig } from './types';
 import { createCastMemory, neynarCastToCast } from './utils';
@@ -18,7 +18,7 @@ export function standardCastHandlerCallback({
   runtime: IAgentRuntime;
   config: FarcasterConfig;
   roomId: UUID;
-  onCompletion?: (casts: CastWithInteractions[], memories: Memory[]) => Promise<void>;
+  onCompletion?: (casts: NeynarCast[], memories: Memory[]) => Promise<void>;
   onError?: (error: unknown) => Promise<void>;
 }): HandlerCallback {
   const callback: HandlerCallback = async (content: Content, _files?: any) => {

@@ -1,5 +1,5 @@
 import { IAgentRuntime, Memory, stringToUuid, UUID } from '@elizaos/core';
-import { CastWithInteractions } from '@neynar/nodejs-sdk/build/api';
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { FARCASTER_SOURCE } from './constants';
 import { Cast } from './types';
 
@@ -100,7 +100,7 @@ export function lastCastCacheKey(fid: number) {
   return `farcaster/${fid}/lastCast`;
 }
 
-export function neynarCastToCast(neynarCast: CastWithInteractions): Cast {
+export function neynarCastToCast(neynarCast: NeynarCast): Cast {
   return {
     hash: neynarCast.hash,
     authorFid: neynarCast.author.fid,
