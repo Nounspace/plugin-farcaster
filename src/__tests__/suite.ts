@@ -172,7 +172,7 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Profile fetch failed.');
       }
       //logger.log('Successfully fetched Farcaster profile:', JSON.stringify(profile));
-      runtime.logger.log({ profile }, 'Successfully fetched Farcaster profile:');
+      runtime.logger.info({ profile }, 'Successfully fetched Farcaster profile:');
     } catch (error) {
       throw new Error(`Error fetching Farcaster profile: ${error}`);
     }

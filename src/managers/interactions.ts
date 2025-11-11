@@ -17,8 +17,6 @@ import type { FarcasterClient } from '../client';
 import { AsyncQueue } from '../common/asyncqueue';
 import { standardCastHandlerCallback } from '../common/callbacks';
 import { FARCASTER_SOURCE } from '../common/constants';
-import { formatCast, formatTimeline } from '../common/prompts';
-import { shouldRespondTemplate } from '@elizaos/core';
 import {
   type Cast,
   type FarcasterConfig,
@@ -26,7 +24,7 @@ import {
   FarcasterGenericCastPayload,
   type Profile,
 } from '../common/types';
-import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
+import { castUuid, neynarCastToCast } from '../common/utils';
 import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
 import type { IInteractionProcessor } from './interaction-processor';
 
@@ -275,33 +273,10 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       memory.id ? new Set([memory.id]) : new Set()
     );
 
-    this.runtime.logger.log(
-      {
-        castHash: mention.hash,
-        textPreview: mention.text?.slice(0, 160) || '',
-        threadDepth: thread.length,
-      },
-      '[Farcaster] Prepared mention context'
-    );
-
     if (!memory.content.text || memory.content.text.trim() === '') {
       logger.info({ hash: mention.hash }, 'skipping cast with no text');
       return;
     }
-
-    // Build the state for the prompt
-    const currentPost = formatCast(mention);
-    const { timeline } = await this.client.getTimeline({ fid: agent.fid, pageSize: 20 });
-    const formattedTimeline = formatTimeline(this.runtime.character, timeline);
-    const formattedConversation = thread
-      .map((c) =>
-        `
-        - @${c.profile.username} (${formatCastTimestamp(c.timestamp)}):
-          ${c.text}`.trim()
-      )
-      .join('\n\n');
-
-    // Call messageService directly - it handles state composition, shouldRespond, and actions
 
     // Setup callback for the response
     const callback = standardCastHandlerCallback({
@@ -338,9 +313,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       memory,
       cast,
       source: FARCASTER_SOURCE,
-      callback: async (content: Content, _files?: any) => {
-        return [];
-      },
+      callback,
     };
     this.runtime.emitEvent(FarcasterEventTypes.MENTION_RECEIVED, mentionPayload);
   }
