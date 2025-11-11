@@ -69,7 +69,9 @@ export class FarcasterCastService implements CastServiceInterface {
   }): Promise<FarcasterCast[]> {
     try {
       const { timeline } = await this.client.getTimeline({
-        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        fid:
+          (this.runtime as any).character.settings?.FARCASTER_FID ||
+          (this.runtime as any).getSetting?.('FARCASTER_FID'),
         pageSize: params.limit || 50,
       });
 
@@ -230,7 +232,9 @@ export class FarcasterCastService implements CastServiceInterface {
   async getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]> {
     try {
       const mentions = await this.client.getMentions({
-        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        fid:
+          (this.runtime as any).character.settings?.FARCASTER_FID ||
+          (this.runtime as any).getSetting?.('FARCASTER_FID'),
         pageSize: params.limit || 20,
       });
 
