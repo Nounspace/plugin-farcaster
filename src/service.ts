@@ -36,12 +36,12 @@ export class FarcasterService extends Service {
     let manager = service.managers.get(runtime.agentId);
 
     if (manager) {
-      logger.warn('Farcaster service already started', runtime.agentId);
+      logger.warn({ agentId: runtime.agentId }, 'Farcaster service already started');
       return service;
     }
 
     if (!hasFarcasterEnabled(runtime)) {
-      logger.debug('Farcaster service not enabled', runtime.agentId);
+      logger.debug({ agentId: runtime.agentId }, 'Farcaster service not enabled');
       return service;
     }
 
@@ -58,7 +58,7 @@ export class FarcasterService extends Service {
 
     await manager.start();
 
-    logger.success('Farcaster client started', runtime.agentId);
+    logger.success({ agentId: runtime.agentId },'Farcaster client started');
     return service;
   }
 
@@ -71,9 +71,9 @@ export class FarcasterService extends Service {
       service.managers.delete(runtime.agentId);
       service.messageServices.delete(runtime.agentId);
       service.castServices.delete(runtime.agentId);
-      logger.info('Farcaster client stopped', runtime.agentId);
+      logger.info({ agentId: runtime.agentId }, 'Farcaster client stopped');
     } else {
-      logger.debug('Farcaster service not running', runtime.agentId);
+      logger.debug({ agentId: runtime.agentId },'Farcaster service not running');
     }
   }
 
@@ -85,7 +85,7 @@ export class FarcasterService extends Service {
       try {
         await FarcasterService.stop(manager.runtime);
       } catch (error) {
-        logger.error('Error stopping Farcaster service', agentId, error);
+        logger.error({ agentId, error }, 'Error stopping Farcaster service');
       }
     }
   }
@@ -103,7 +103,7 @@ export class FarcasterService extends Service {
     return this.castServices.get(agentId);
   }
 
-  // Get the CastService for a specific agent  
+  // Get the CastService for a specific agent
   getCastService(agentId: UUID): FarcasterCastService | undefined {
     return this.castServices.get(agentId);
   }
