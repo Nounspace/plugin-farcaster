@@ -61,14 +61,14 @@ export const replyCastAction: Action = {
     return hasKeyword && (hasParentCast || isServiceAvailable);
   },
 
-  handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
+  handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<void> => {
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
       const messageService = service?.getMessageService(runtime.agentId);
 
       if (!messageService) {
-        logger.error('[REPLY_TO_CAST] MessageService not available');
-        return false;
+        runtime.logger.error('[REPLY_TO_CAST] MessageService not available');
+        return;
       }
 
       // Get the parent cast hash
@@ -76,8 +76,8 @@ export const replyCastAction: Action = {
         (message.content.metadata as any)?.parentCastHash || state?.parentCastHash;
 
       if (!parentCastHash) {
-        logger.error('[REPLY_TO_CAST] No parent cast to reply to');
-        return false;
+        runtime.logger.error('[REPLY_TO_CAST] No parent cast to reply to');
+        return;
       }
 
       // Generate reply content
@@ -109,12 +109,9 @@ export const replyCastAction: Action = {
         },
       });
 
-      logger.info(`[REPLY_TO_CAST] Successfully replied to cast: ${reply.id}`);
-
-      return true;
+      runtime.logger.info(`[REPLY_TO_CAST] Successfully replied to cast: ${reply.id}`);
     } catch (error) {
-      logger.error('[REPLY_TO_CAST] Error replying to cast:', error);
-      return false;
+      runtime.logger.error('[REPLY_TO_CAST] Error replying to cast:', typeof error === 'string' ? error : (error as Error).message);
     }
   },
 };
