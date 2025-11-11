@@ -14,14 +14,14 @@ export const farcasterE2EScenarios: TestCase[] = [
       }
 
       // Test 1: Post introduction
-      const postService = service.getPostService(runtime.agentId);
+      const postService = service.getCastService(runtime.agentId);
       if (!postService) {
         throw new Error('PostService not available');
       }
 
       const introText = `Hello Farcaster! I'm ${runtime.character.name}, an AI agent powered by ElizaOS. Looking forward to connecting with you all! 🤖`;
       
-      const cast = await postService.createPost({
+      const cast = await postService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-timeline'),
         text: introText,
@@ -65,7 +65,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       }
 
       // Test 1: Fetch timeline casts
-      const casts = await postService.getPosts({
+      const casts = await postService.getCasts({
         agentId: runtime.agentId,
         limit: 10,
       });
@@ -85,7 +85,10 @@ export const farcasterE2EScenarios: TestCase[] = [
       }
 
       // Test 2: Fetch mentions
-      const mentions = await postService.getMentions(runtime.agentId, { limit: 5 });
+      const mentions = await postService.getMentions({
+        agentId: runtime.agentId,
+        limit: 5
+      });
       
       if (!Array.isArray(mentions)) {
         throw new Error('getMentions did not return an array');
@@ -152,7 +155,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       }
 
       // First create a cast to reply to
-      const originalCast = await postService.createPost({
+      const originalCast = await postService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'reply-test'),
         text: 'This is a test cast for reply threading 🧵',
@@ -310,7 +313,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       logger.info(`Active managers: ${health.details.activeManagers}`);
       
       if (!health.healthy) {
-        logger.warn('Service reported unhealthy status:', health.details);
+        logger.warn('Service reported unhealthy status:', (health.details).toString());
       }
     }
   },
@@ -323,7 +326,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('FarcasterService not found');
       }
 
-      const postService = service.getPostService(runtime.agentId);
+      const postService = service.getCastService(runtime.agentId);
       if (!postService) {
         throw new Error('PostService not available');
       }
@@ -331,7 +334,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       const uniqueMessage = `This is a real E2E test cast from ElizaOS! ID: ${createUniqueUuid(runtime, 'e2e-cast')}`;
       logger.info(`Attempting to post cast: "${uniqueMessage}"`);
 
-      const cast = await postService.createPost({
+      const cast = await postService.createCast({
         agentId: runtime.agentId,
         roomId: createUniqueUuid(runtime, 'farcaster-e2e-test'),
         text: uniqueMessage,
