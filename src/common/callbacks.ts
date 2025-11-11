@@ -62,7 +62,7 @@ export function standardCastHandlerCallback({
 
       return memories;
     } catch (error) {
-      logger.error('[Farcaster] Error posting cast:', error);
+      runtime.logger.error('[Farcaster] Error posting cast:', typeof error === 'string' ? error : (error as Error).message);
 
       if (onError) {
         await onError(error);
