@@ -68,7 +68,7 @@ export class FarcasterCastManager {
         logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic cast loop:', this.runtime.agentId, error);
+        logger.error({ agentId: this.runtime.agentId, error }, '[Farcaster] Error in periodic cast loop:');
       }
     }
   }
@@ -104,6 +104,7 @@ export class FarcasterCastManager {
       });
     } catch (error) {
       logger.error(`Error generating new cast: ${JSON.stringify(error)}`);
+      //logger.error({ error },'Error generating new cast:');
     }
   }
 }
