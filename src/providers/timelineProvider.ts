@@ -69,7 +69,7 @@ export const farcasterTimelineProvider: Provider = {
         },
       };
     } catch (error) {
-      logger.error('[FarcasterTimelineProvider] Error:', error);
+      runtime.logger.error('[FarcasterTimelineProvider] Error:', typeof error === 'string' ? error : (error as Error).message);
       return {
         text: 'Unable to fetch Farcaster timeline.',
         data: { available: false, error: error instanceof Error ? error.message : 'Unknown error' },
