@@ -1,12 +1,9 @@
-import {
-  type UUID,
-  logger,
-  createUniqueUuid,
-} from '@elizaos/core';
+import { type UUID, logger, createUniqueUuid } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
 import { FarcasterMessageType, FarcasterEventTypes } from '../common/types';
+import type { Cast } from '../common/types';
 
 // Simple interfaces for MessageService compatibility
 interface Message {
@@ -46,7 +43,32 @@ export class FarcasterMessageService implements IMessageService {
   constructor(
     private client: FarcasterClient,
     private runtime: any
-  ) {}
+  ) { }
+
+  private castToMessage(
+    cast: Cast,
+    agentId: UUID,
+    extraMetadata?: Record<string, unknown>
+  ): Message {
+    return {
+      id: castUuid({ hash: cast.hash, agentId }),
+      agentId,
+      roomId: createUniqueUuid(this.runtime, cast.threadId || cast.hash),
+      userId: cast.profile.fid.toString(),
+      username: cast.profile.username,
+      text: cast.text,
+      type: cast.inReplyTo ? FarcasterMessageType.REPLY : FarcasterMessageType.CAST,
+      timestamp: cast.timestamp.getTime(),
+      inReplyTo: cast.inReplyTo ? castUuid({ hash: cast.inReplyTo.hash, agentId }) : undefined,
+      metadata: {
+        source: FARCASTER_SOURCE,
+        castHash: cast.hash,
+        threadId: cast.threadId,
+        authorFid: cast.authorFid,
+        ...(extraMetadata || {}),
+      },
+    };
+  }
 
   async getMessages(options: GetMessagesOptions): Promise<Message[]> {
     try {
@@ -61,35 +83,18 @@ export class FarcasterMessageService implements IMessageService {
       });
 
       const messages: Message[] = timeline
-        .filter((cast) => {
+        .map((cast) => this.castToMessage(cast, this.runtime.agentId))
+        .filter((message) => {
           if (roomId) {
-            const castRoomId = createUniqueUuid(this.runtime, cast.threadId || cast.hash);
-            return castRoomId === roomId;
+            return message.roomId === roomId;
           }
           return true;
-        })
-        .map((cast) => ({
-          id: castUuid({ hash: cast.hash, agentId: this.runtime.agentId }),
-          agentId: this.runtime.agentId,
-          roomId: createUniqueUuid(this.runtime, cast.threadId || cast.hash),
-          userId: cast.profile.fid.toString(),
-          username: cast.profile.username,
-          text: cast.text,
-          type: cast.inReplyTo ? FarcasterMessageType.REPLY : FarcasterMessageType.CAST,
-          timestamp: cast.timestamp.getTime(),
-          inReplyTo: cast.inReplyTo
-            ? castUuid({ hash: cast.inReplyTo.hash, agentId: this.runtime.agentId })
-            : undefined,
-          metadata: {
-            castHash: cast.hash,
-            threadId: cast.threadId,
-            authorFid: cast.authorFid,
-          },
-        }));
+        });
 
       return messages;
     } catch (error) {
       logger.error(`[Farcaster] Error fetching messages: ${JSON.stringify(error)}`);
+      //logger.error({ error }, '[Farcaster] Error fetching messages:');
       return [];
     }
   }
@@ -121,23 +126,9 @@ export class FarcasterMessageService implements IMessageService {
       }
 
       const cast = neynarCastToCast(casts[0]);
-      const message: Message = {
-        id: castUuid({ hash: cast.hash, agentId }),
-        agentId,
-        roomId,
-        userId: cast.profile.fid.toString(),
-        username: cast.profile.username,
-        text: cast.text,
-        type: type as FarcasterMessageType,
-        timestamp: cast.timestamp.getTime(),
-        inReplyTo: inReplyTo ? castUuid({ hash: inReplyTo.hash, agentId }) : undefined,
-        metadata: {
-          ...options.metadata,
-          castHash: cast.hash,
-          threadId: cast.threadId,
-          authorFid: cast.authorFid,
-        },
-      };
+      const message = this.castToMessage(cast, agentId, options.metadata);
+      message.roomId = roomId;
+      message.type = type as FarcasterMessageType;
 
       // Emit event for metadata tracking
       await this.runtime.emitEvent(FarcasterEventTypes.CAST_GENERATED, {
@@ -150,6 +141,7 @@ export class FarcasterMessageService implements IMessageService {
       return message;
     } catch (error) {
       logger.error(`[Farcaster] Error sending message: ${JSON.stringify(error)}`);
+      //logger.error({ error }, '[Farcaster] Error sending message:');
       throw error;
     }
   }
@@ -168,29 +160,36 @@ export class FarcasterMessageService implements IMessageService {
       const cast = await this.client.getCast(castHash);
       const farcasterCast = neynarCastToCast(cast);
 
-      const message: Message = {
-        id: castUuid({ hash: farcasterCast.hash, agentId }),
-        agentId,
-        roomId: createUniqueUuid(this.runtime, farcasterCast.threadId || farcasterCast.hash),
-        userId: farcasterCast.profile.fid.toString(),
-        username: farcasterCast.profile.username,
-        text: farcasterCast.text,
-        type: farcasterCast.inReplyTo ? FarcasterMessageType.REPLY : FarcasterMessageType.CAST,
-        timestamp: farcasterCast.timestamp.getTime(),
-        inReplyTo: farcasterCast.inReplyTo
-          ? castUuid({ hash: farcasterCast.inReplyTo.hash, agentId })
-          : undefined,
-        metadata: {
-          castHash: farcasterCast.hash,
-          threadId: farcasterCast.threadId,
-          authorFid: farcasterCast.authorFid,
-        },
-      };
-
-      return message;
+      return this.castToMessage(farcasterCast, agentId);
     } catch (error) {
       logger.error(`[Farcaster] Error fetching message: ${JSON.stringify(error)}`);
+      //logger.error({ error },'[Farcaster] Error fetching message:');
       return null;
+    }
+  }
+
+  async getThread(params: { agentId: UUID; castHash: string }): Promise<Message[]> {
+    try {
+      const thread: Message[] = [];
+      const visited = new Set<string>();
+      let currentHash: string | undefined = params.castHash;
+
+      while (currentHash) {
+        if (visited.has(currentHash)) {
+          break;
+        }
+        visited.add(currentHash);
+
+        const cast = neynarCastToCast(await this.client.getCast(currentHash));
+        thread.unshift(this.castToMessage(cast, params.agentId));
+
+        currentHash = cast.inReplyTo?.hash;
+      }
+
+      return thread;
+    } catch (error) {
+      logger.error(`[Farcaster] Error fetching thread: ${JSON.stringify(error)}`);
+      return [];
     }
   }
 
