@@ -351,7 +351,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       memory,
       cast,
       source: FARCASTER_SOURCE,
-      callback: async (content: Content, _files: any[]) => {
+      callback: async (content: Content, _files?: any[]) => {
         logger.info('[Farcaster] mention received response:', response);
         return [];
       },
