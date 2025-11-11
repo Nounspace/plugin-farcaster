@@ -30,8 +30,8 @@
     "vitest": "^3.0.0"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "bun run build.ts",
+    "dev": "bun run build.ts --watch",
     "test": "elizaos test",
     "test:watch": "vitest watch",
     "test:unit": "vitest run __tests__/unit",
