@@ -63,7 +63,8 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
         const delay = this.config.FARCASTER_POLL_INTERVAL * 1000;
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
       } catch (error) {
-        logger.error('[Farcaster] Error in polling:', this.runtime.agentId, error);
+        //logger.error('[Farcaster] Error in polling:', this.runtime.agentId, error);
+        this.runtime.logger.error({ error }, '[Farcaster] Error in polling:');
       }
     }
   }
@@ -85,7 +86,7 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
           continue;
         }
 
-        logger.info('New Cast found', mention.hash);
+        logger.info({ hash: mention.hash }, 'New Cast found');
 
         // Filter out the agent mentions (self-posts)
         if (mention.authorFid === agentFid) {
@@ -98,7 +99,8 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
         // Process mention through the processor
         await this.processor.processMention(cast);
       } catch (error) {
-        logger.error('[Farcaster] Error processing mention:', error instanceof Error ? error.message : String(error));
+        //logger.error('[Farcaster] Error processing mention:', error instanceof Error ? error.message : String(error));
+        logger.error({ error },'[Farcaster] Error processing mention:');
       }
     }
   }
@@ -135,7 +137,8 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
     try {
       await this.processor.processWebhookData(webhookData);
     } catch (error) {
-      logger.error('[Farcaster] Error processing webhook data:', error instanceof Error ? error.message : String(error));
+      //logger.error('[Farcaster] Error processing webhook data:', error instanceof Error ? error.message : String(error));
+      logger.error({ error }, '[Farcaster] Error processing webhook data:');
     }
   }
 }
