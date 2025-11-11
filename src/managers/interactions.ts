@@ -1,6 +1,6 @@
 import {
   ChannelType,
-  composePrompt,
+  composePromptFromState,
   Content,
   createUniqueUuid,
   EventType,
@@ -9,6 +9,7 @@ import {
   type Memory,
   MessagePayload,
   ModelType,
+  parseKeyValueXml,
   UUID,
 } from '@elizaos/core';
 import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
@@ -44,7 +45,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;
   private asyncQueue: AsyncQueue;
-  
+
   // Mode and source management
   public readonly mode: 'polling' | 'webhook';
   public readonly source: FarcasterInteractionSource;
@@ -54,7 +55,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     this.runtime = opts.runtime;
     this.config = opts.config;
     this.asyncQueue = new AsyncQueue(1);
-    
+
     // Initialize mode and source
     this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
     this.source = createFarcasterInteractionSource({
@@ -63,7 +64,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       config: this.config,
       processor: this
     });
-    
+
     logger.info(`Farcaster interaction mode: ${this.mode}`);
   }
 
@@ -74,7 +75,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agentFid = this.config.FARCASTER_FID;
     const agent = await this.client.getProfile(agentFid);
     const mention = neynarCastToCast(cast);
-    
+
     await this.handleMentionCast({ agent, mention, cast });
   }
 
@@ -86,7 +87,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agentFid = this.config.FARCASTER_FID;
     const agent = await this.client.getProfile(agentFid);
     const reply = neynarCastToCast(cast);
-    
+
     await this.handleMentionCast({ agent, mention: reply, cast });
   }
 
@@ -123,7 +124,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
     // Check if it's a mention
     const isMention = castData.mentioned_profiles?.some((profile: any) => profile.fid === agentFid);
-    
+
     // Check if it's a reply to the agent
     const isReply = castData.parent_hash && castData.parent_author?.fid === agentFid;
 
@@ -131,25 +132,27 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
       logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
-      
+
       try {
         // Fetch the proper NeynarCast object using the cast hash
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processMention(neynarCast);
       } catch (error) {
-        logger.error(`Failed to process webhook mention from @${username}:`, error instanceof Error ? error.message : String(error));
+        //logger.error(`Failed to process webhook mention from @${username}:`, error instanceof Error ? error.message : String(error));
+        logger.error({ agentId: this.runtime.agentId, error }, '[Farcaster] Error in periodic interactions:');
       }
     } else if (isReply) {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
       logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
-      
+
       try {
         // Fetch the proper NeynarCast object using the cast hash
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processReply(neynarCast);
       } catch (error) {
-        logger.error(`Failed to process webhook reply from @${username}:`, error instanceof Error ? error.message : String(error));
+        //logger.error(`Failed to process webhook reply from @${username}:`, error instanceof Error ? error.message : String(error));
+        logger.error({ error }, `Failed to process webhook reply from @${username}:`);
       }
     } else {
       logger.debug('Webhook cast is neither mention nor reply to agent');
@@ -228,7 +231,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const memory = await runtime.getMemoryById(memoryId);
 
       if (!memory) {
-        logger.info('Creating memory for cast', currentCast.hash);
+        logger.info({ hash: currentCast.hash }, 'Creating memory for cast');
         const memory = await self.ensureCastConnection(currentCast);
         await runtime.createMemory(memory, 'messages');
         runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED, {
@@ -261,7 +264,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     mention: Cast;
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
-      logger.info('skipping cast from bot itself', mention.hash);
+      logger.info({ hash: mention.hash }, 'skipping cast from bot itself');
       return;
     }
 
@@ -272,8 +275,17 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       memory.id ? new Set([memory.id]) : new Set()
     );
 
+    this.runtime.logger.log(
+      {
+        castHash: mention.hash,
+        textPreview: mention.text?.slice(0, 160) || '',
+        threadDepth: thread.length,
+      },
+      '[Farcaster] Prepared mention context'
+    );
+
     if (!memory.content.text || memory.content.text.trim() === '') {
-      logger.info('skipping cast with no text', mention.hash);
+      logger.info({ hash: mention.hash }, 'skipping cast with no text');
       return;
     }
 
@@ -289,41 +301,9 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       )
       .join('\n\n');
 
-    const state = await this.runtime.composeState(memory);
-    state.values = {
-      ...state.values,
-      farcasterUsername: agent.username,
-      timeline: formattedTimeline,
-      currentPost,
-      formattedConversation,
-    };
+    // Call messageService directly - it handles state composition, shouldRespond, and actions
 
-    // Determine if we should respond to the cast
-    const shouldRespondPrompt = composePrompt({
-      state,
-      template:
-        this.runtime.character.templates?.farcasterShouldRespondTemplate ||
-        this.runtime.character?.templates?.shouldRespondTemplate ||
-        shouldRespondTemplate,
-    });
-
-    const response = await this.runtime.useModel(ModelType.TEXT_SMALL, {
-      prompt: shouldRespondPrompt,
-    });
-
-    const responseActions = (response.match(/(?:RESPOND|IGNORE|STOP)/g) || ['IGNORE'])[0];
-    if (responseActions !== 'RESPOND') {
-      logger.info(`Not responding to cast based on shouldRespond decision: ${responseActions}`);
-      try {
-        // save the memory so we don't process it again in mentions
-        await this.runtime.createMemory(memory, 'messages');
-      } catch (error) {
-        logger.error(`Error creating ignoredmemory: ${JSON.stringify(error)}`);
-      }
-      return;
-    }
-
-    // setup callback for the response
+    // Setup callback for the response
     const callback = standardCastHandlerCallback({
       client: this.client,
       runtime: this.runtime,
@@ -335,24 +315,30 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       },
     });
 
-    // Emit generic message received events
-    const messageReceivedPayload: MessagePayload = {
-      runtime: this.runtime,
-      message: memory,
-      source: FARCASTER_SOURCE,
-      callback,
-    };
+    // Call messageService directly - it handles shouldRespond evaluation and action processing
+    try {
+      await this.runtime.messageService.handleMessage(
+        this.runtime,
+        memory,
+        callback
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          castHash: mention.hash,
+        },
+        '[Farcaster] Error processing mention'
+      );
+    }
 
-    this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload);
-
-    // Emit platform-specific MENTION_RECEIVED event
+    // Emit platform-specific MENTION_RECEIVED event for any custom handlers
     const mentionPayload: FarcasterGenericCastPayload = {
       runtime: this.runtime,
       memory,
       cast,
       source: FARCASTER_SOURCE,
-      callback: async (content: Content, _files: any[]) => {
-        logger.info('[Farcaster] mention received response:', response);
+      callback: async (content: Content, _files?: any) => {
         return [];
       },
     };
