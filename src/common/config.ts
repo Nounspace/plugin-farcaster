@@ -56,7 +56,7 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
     const farcasterConfig = {
       FARCASTER_DRY_RUN:
         runtime.getSetting('FARCASTER_DRY_RUN') ||
-        parseBooleanFromText(process.env.FARCASTER_DRY_RUN || 'false'),
+        parseBooleanFromText(process.env.FARCASTER_DRY_RUN || 'true'),
 
       FARCASTER_FID: Number.isNaN(fid) ? undefined : fid,
 
@@ -122,6 +122,24 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         runtime.getSetting('FARCASTER_MODE') || 
         process.env.FARCASTER_MODE || 
         'polling',
+      
+      // Stream configuration
+      FARCASTER_HUB_RPC:
+        runtime.getSetting('FARCASTER_HUB_RPC') ||
+        process.env.FARCASTER_HUB_RPC ||
+        "http://hub-grpc-api.neynar.com",
+      
+      FARCASTER_TARGET_CHANNELS:
+        runtime.getSetting('FARCASTER_TARGET_CHANNELS') ||
+        process.env.FARCASTER_TARGET_CHANNELS,
+      
+      FARCASTER_TARGET_USERS:
+        runtime.getSetting('FARCASTER_TARGET_USERS') ||
+        process.env.FARCASTER_TARGET_USERS,
+      
+      FARCASTER_TARGET_REGEX:
+        runtime.getSetting('FARCASTER_TARGET_REGEX') ||
+        process.env.FARCASTER_TARGET_REGEX,
 
       // Spam filter settings
       SPAM_FILTER_ENABLED:
@@ -142,27 +160,20 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
     logger.debug(`[validateFarcasterConfig] Resolved API Key: ${farcasterConfig.FARCASTER_NEYNAR_API_KEY ? 'Found' : 'Missing'}`);
 
     const config = FarcasterConfigSchema.parse(farcasterConfig);
-
     const isDryRun = config.FARCASTER_DRY_RUN;
 
     // Log configuration on initialization
-
     logger.log('Farcaster Client Configuration:');
     logger.log(`- FID: ${config.FARCASTER_FID}`);
     logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
     logger.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
-
-    if (config.ENABLE_CAST) {
-      logger.log(
-        `- Cast Interval: ${config.CAST_INTERVAL_MIN}-${config.CAST_INTERVAL_MAX} minutes`
-      );
-      logger.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
-    }
+    logger.log(`- Cast Interval: ${config.CAST_INTERVAL_MIN}-${config.CAST_INTERVAL_MAX} minutes`);
+    logger.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
     logger.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
     logger.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);
 
     if (isDryRun) {
-      logger.log('Farcaster client initialized in dry run mode - no actual casts should be posted');
+      logger.warn('Farcaster client initialized in dry run mode - no actual casts should be posted');
     }
 
     return config;

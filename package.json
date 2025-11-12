@@ -21,6 +21,8 @@
   "dependencies": {
     "@elizaos/core": "^1.0.8",
     "@neynar/nodejs-sdk": "^3.34.0",
+    "@farcaster/hub-nodejs": "^0.15.9",
+    "grapheme-splitter": "^1.0.4",
     "lru-cache": "^11.1.0",
     "typescript": "5.8.3",
     "zod": "^3.25.9"

@@ -11,6 +11,7 @@ interface FarcasterInteractionSourceParams {
   processor: IInteractionProcessor;
 }
 
+
 /**
  * Abstract base class for Farcaster interaction sources
  */
@@ -137,20 +138,5 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
     } catch (error) {
       logger.error('[Farcaster] Error processing webhook data:', error instanceof Error ? error.message : String(error));
     }
-  }
-}
-
-/**
- * Factory function to create the appropriate interaction source based on config
- */
-export function createFarcasterInteractionSource(params: FarcasterInteractionSourceParams): FarcasterInteractionSource {
-  const mode = params.config.FARCASTER_MODE;
-  
-  switch (mode) {
-    case 'webhook':
-      return new FarcasterWebhookSource(params);
-    case 'polling':
-    default:
-      return new FarcasterPollingSource(params);
   }
 }

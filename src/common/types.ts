@@ -58,7 +58,14 @@ export const FarcasterConfigSchema = z.object({
   FARCASTER_POLL_INTERVAL: z.number().int().default(DEFAULT_POLL_INTERVAL),
   
   // Webhook configuration
-  FARCASTER_MODE: z.enum(['polling', 'webhook']).default('polling'),
+  FARCASTER_MODE: z.enum(['polling', 'webhook', 'stream']).default('polling'),
+
+  // Stream configuration
+  FARCASTER_HUB_RPC: z.string().optional(),
+  FARCASTER_TARGET_CHANNELS: z.string().optional(),
+  FARCASTER_TARGET_USERS: z.string().optional(),
+  FARCASTER_TARGET_REGEX: z.string().optional(),
+
   ENABLE_CAST: z
     .union([z.boolean(), z.string()])
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),

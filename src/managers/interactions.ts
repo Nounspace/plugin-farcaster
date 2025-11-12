@@ -26,10 +26,46 @@ import {
   type Profile,
 } from '../common/types';
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
-import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
+import {
+  FarcasterInteractionSource,
+  FarcasterPollingSource,
+  FarcasterWebhookSource,
+} from './interaction-source';
+import { FarcasterStreamSource } from './stream-interaction-source';
 import type { IInteractionProcessor } from './interaction-processor';
 import { SpamFilterManager } from './spamFilterManager';
 import { shouldRespondSecurityTemplate } from '../common/prompts/spam';
+
+interface FarcasterInteractionSourceParams {
+  client: FarcasterClient;
+  runtime: IAgentRuntime;
+  config: FarcasterConfig;
+  processor: IInteractionProcessor;
+}
+
+/**
+ * Factory function to create the appropriate interaction source based on config
+ */
+export function createFarcasterInteractionSource(
+  params: FarcasterInteractionSourceParams
+): FarcasterInteractionSource {
+  const mode = params.config.FARCASTER_MODE;
+
+  switch (mode) {
+    case 'webhook':
+      return new FarcasterWebhookSource(params);
+    case 'stream':
+      if (!params.config.FARCASTER_HUB_RPC) {
+        logger.warn('FARCASTER_HUB_RPC is not set for stream mode. Falling back to polling mode.');
+        logger.error('FARCASTER_HUB_RPC is required for stream mode.');
+        return new FarcasterPollingSource(params);
+      }
+      return new FarcasterStreamSource(params);
+    case 'polling':
+    default:
+      return new FarcasterPollingSource(params);
+  }
+}
 
 interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
@@ -93,6 +129,16 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const reply = neynarCastToCast(cast);
     
     await this.handleMentionCast({ agent, mention: reply, cast });
+  }
+
+  async processStreamedCast(cast: Cast): Promise<void> {
+    logger.info(`Processing streamed cast: ${cast.hash}`);
+    const agentFid = this.config.FARCASTER_FID;
+    const agent = await this.client.getProfile(agentFid);
+    
+    // We need to get the full NeynarCast object to use handleMentionCast
+    const neynarCast = await this.client.getCast(cast.hash);
+    await this.handleMentionCast({ agent, mention: cast, cast: neynarCast });
   }
 
   /**

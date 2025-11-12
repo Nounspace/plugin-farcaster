@@ -57,16 +57,12 @@ export class FarcasterCastManager {
 
     while (this.isRunning) {
       try {
-        const lastPost = await this.runtime.getCache<LastCast>(lastCastCacheKey(this.fid));
-        const lastPostTimestamp = lastPost?.timestamp ?? 0;
         const { delay, randomMinutes } = this.calculateDelay();
-
-        if (Date.now() > lastPostTimestamp + delay) {
-          await this.generateNewCast();
-        }
-
         logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
+
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
+
+        await this.generateNewCast();
       } catch (error) {
         logger.error('[Farcaster] Error in periodic cast loop:', this.runtime.agentId, error);
       }
