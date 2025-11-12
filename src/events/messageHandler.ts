@@ -20,8 +20,8 @@ export const handleCastSent = async (payload: {
   message: Memory;
   threadId?: string;
 }): Promise<void> => {
-  const { runtime, castHash, message, threadId } = payload;
   try {
+    const { runtime, castHash, message, threadId } = payload;
 
     // Create metadata mapping
     const metadata = {
@@ -50,7 +50,9 @@ export const handleCastSent = async (payload: {
 
     runtime.logger.info(`[FarcasterMessageHandler] Stored cast metadata: ${castHash}`);
   } catch (error) {
-    runtime.logger.error('[FarcasterMessageHandler] Error storing cast metadata:', typeof error === 'string' ? error : (error as Error).message);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error storing cast metadata:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -58,12 +60,12 @@ export const handleCastSent = async (payload: {
  * Handles incoming Farcaster messages and enriches them with metadata
  */
 export const handleCastReceived = async (payload: MessagePayload): Promise<void> => {
-  if (payload.source !== FARCASTER_SOURCE) {
-    return;
-  }
-
-  const { runtime, message } = payload;
   try {
+    if (payload.source !== FARCASTER_SOURCE) {
+      return;
+    }
+
+    const { runtime, message } = payload;
 
     // Extract cast metadata
     const castHash = (message.content.metadata as any)?.castHash;
@@ -95,7 +97,9 @@ export const handleCastReceived = async (payload: MessagePayload): Promise<void>
       runtime.logger.info(`[FarcasterMessageHandler] Processed incoming cast: ${castHash}`);
     }
   } catch (error) {
-    runtime.logger.error('[FarcasterMessageHandler] Error processing incoming cast:', typeof error === 'string' ? error : (error as Error).message);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error processing incoming cast:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -108,8 +112,8 @@ export const handleReplyTracking = async (payload: {
   parentCastHash: string;
   roomId: UUID;
 }): Promise<void> => {
-  const { runtime, replyCastHash, parentCastHash, roomId } = payload;
   try {
+    const { runtime, replyCastHash, parentCastHash, roomId } = payload;
 
     // Create relationship metadata
     await runtime.createMemory(
@@ -137,7 +141,9 @@ export const handleReplyTracking = async (payload: {
       `[FarcasterMessageHandler] Linked reply ${replyCastHash} to parent ${parentCastHash}`
     );
   } catch (error) {
-    runtime.logger.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
