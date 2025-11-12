@@ -5,6 +5,7 @@ import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
 import { FarcasterMessageService } from './services/MessageService';
 import { FarcasterCastService } from './services/CastService';
 import { SpamFilterManager } from './managers/spamFilterManager';
+import { FarcasterStreamService } from './services/stream-service';
 
 export class FarcasterService extends Service {
   private static instance?: FarcasterService;
@@ -12,6 +13,7 @@ export class FarcasterService extends Service {
   private messageServices = new Map<UUID, FarcasterMessageService>();
   private castServices = new Map<UUID, FarcasterCastService>();
   private sharedSpamFilter?: SpamFilterManager;
+  private streamService?: FarcasterStreamService;
 
   // Properly implement serviceType for discoverability
   static serviceType = FARCASTER_SERVICE_NAME;
@@ -48,6 +50,20 @@ export class FarcasterService extends Service {
     }
 
     const farcasterConfig = validateFarcasterConfig(runtime);
+
+    if (farcasterConfig.FARCASTER_MODE === 'stream' && !service.streamService) {
+      const { NeynarAPIClient, Configuration } = await import('@neynar/nodejs-sdk');
+      const neynarConfig = new Configuration({ apiKey: farcasterConfig.FARCASTER_NEYNAR_API_KEY });
+      const neynar = new NeynarAPIClient(neynarConfig);
+      const { FarcasterClient } = await import('./client');
+      const client = new FarcasterClient({ neynar, signerUuid: farcasterConfig.FARCASTER_SIGNER_UUID });
+      
+      service.streamService = FarcasterStreamService.getInstance({
+        config: farcasterConfig,
+        client: client,
+      });
+      service.streamService.start();
+    }
 
     let spamFilter: SpamFilterManager | undefined;
     if (farcasterConfig.SPAM_FILTER_ENABLED) {
@@ -95,6 +111,9 @@ export class FarcasterService extends Service {
   // Called to stop all Farcaster services
   async stop(): Promise<void> {
     logger.debug('Stopping ALL Farcaster services');
+    if (this.streamService) {
+      await this.streamService.stop();
+    }
     for (const manager of Array.from(this.managers.values())) {
       const agentId = manager.runtime.agentId;
       try {
