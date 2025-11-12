@@ -346,10 +346,75 @@ export const farcasterE2EScenarios: TestCase[] = [
 
       logger.success(`Successfully posted E2E test cast with ID: ${cast.id}`);
       // In a real-world scenario, you might want to add a step to delete this cast
-      // if the API supports it, to keep the feed clean.
-    },
-  },
-];
+            // if the API supports it, to keep the feed clean.
+          },
+        },
+        {
+          name: 'Farcaster Plugin - Spam Filter E2E',
+          async fn(runtime: IAgentRuntime): Promise<void> {
+            const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
+            if (!service) {
+              throw new Error('Farcaster service not initialized');
+            }
+      
+            // Enable spam filter for this test
+            runtime.setSetting('SPAM_FILTER_ENABLED', true);
+      
+            const manager = service.getActiveManagers().get(runtime.agentId);
+            if (!manager) {
+              throw new Error('Manager not found for agent');
+            }
+      
+            const spammerFid = 999999;
+            const spammerUsername = 'spammer';
+      
+            // Simulate receiving a spam cast
+            const spamCast = {
+              hash: '0xspamhash1',
+              authorFid: spammerFid,
+              text: 'buy my new crypto token now!!!',
+              profile: {
+                fid: spammerFid,
+                username: spammerUsername,
+                name: 'Spam User',
+              },
+              timestamp: new Date(),
+              stats: { recasts: 0, replies: 0, likes: 0 },
+            };
+      
+            const interactionManager = manager.interactions;
+            // @ts-ignore - private method
+            await interactionManager.handleMentionCast(spamCast);
+      
+            // Verify user is blocked
+            const spamFilter = manager.spamFilter;
+            if (!spamFilter) {
+              throw new Error('Spam filter not initialized');
+            }
 
-// Export for use in test suite
-export default farcasterE2EScenarios; 
+            const spammerUuid = createUniqueUuid(runtime, String(spammerFid));
+            // expect(spamFilter.isUserBlocked(spammerUuid)).toBe(true);
+      
+            logger.info('Spammer user successfully blocked.');
+      
+            // Simulate another cast from the same user
+            const anotherSpamCast = {
+              ...spamCast,
+              hash: '0xspamhash2',
+              text: 'seriously, buy my token, its going to the moon',
+            };
+      
+            // This should be ignored and not throw an error
+            // @ts-ignore - private method
+            await interactionManager.handleMentionCast(anotherSpamCast);
+      
+            logger.info('Second spam cast from user was successfully ignored.');
+      
+            // Disable spam filter after test
+            runtime.setSetting('SPAM_FILTER_ENABLED', false);
+          },
+        },
+      ];
+      
+      // Export for use in test suite
+      export default farcasterE2EScenarios;

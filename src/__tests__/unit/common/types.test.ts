@@ -195,6 +195,7 @@ describe('FarcasterConfigSchema', () => {
   it('should validate complete valid configuration', () => {
     const validConfig: FarcasterConfig = {
       FARCASTER_DRY_RUN: true,
+      FARCASTER_MODE: "polling",
       FARCASTER_FID: 12345,
       MAX_CAST_LENGTH: 280,
       FARCASTER_POLL_INTERVAL: 60,
@@ -207,7 +208,10 @@ describe('FarcasterConfigSchema', () => {
       MAX_ACTIONS_PROCESSING: 10,
       FARCASTER_SIGNER_UUID: 'uuid-1234-5678-9012',
       FARCASTER_NEYNAR_API_KEY: 'api-key-12345',
-      FARCASTER_HUB_URL: 'https://hub.farcaster.example.com'
+      FARCASTER_HUB_URL: 'https://hub.farcaster.example.com',
+      SPAM_FILTER_ENABLED: false,
+      SPAM_FILTER_SHARED: false,
+      SPAM_FILTER_PROMPT: ""
     };
 
     const result = FarcasterConfigSchema.parse(validConfig);
