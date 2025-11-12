@@ -206,11 +206,8 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('SEND_CAST action validation failed');
       }
       
-      // Execute the action
-      const result = await sendCastAction.handler(runtime, mockMessage);
-      if (!result) {
-        throw new Error('SEND_CAST action execution failed');
-      }
+      // Execute the action (returns void, so just check it doesn't throw)
+      await sendCastAction.handler(runtime, mockMessage);
       
       logger.info('Successfully validated and executed SEND_CAST action');
     }
