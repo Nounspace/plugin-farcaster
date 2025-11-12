@@ -175,10 +175,12 @@ You can configure the spam filter in your agent's character file:
   "plugins": ["@elizaos/plugin-farcaster"],
   "settings": {
     "FARCASTER_FID": "123456",
-    "FARCASTER_NEYNAR_API_KEY": "your-api-key",
-    "FARCASTER_SIGNER_UUID": "your-signer-uuid",
     "SPAM_FILTER_ENABLED": true,
-    "SPAM_FILTER_SHARED": false
+    "SPAM_FILTER_SHARED": false,
+    "secrets": {
+      "FARCASTER_NEYNAR_API_KEY": "your-api-key",
+      "FARCASTER_SIGNER_UUID": "your-signer-uuid",
+    }
   },
   "templates": {
     "spamFilterPrompt": "Your custom spam filter prompt here"
