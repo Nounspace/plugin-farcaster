@@ -28,11 +28,14 @@ import {
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
 import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
 import type { IInteractionProcessor } from './interaction-processor';
+import { SpamFilterManager } from './spamFilterManager';
+import { shouldRespondSecurityTemplate } from '../common/prompts/spam';
 
 interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
+  spamFilter?: SpamFilterManager;
 }
 
 /**
@@ -44,6 +47,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;
   private asyncQueue: AsyncQueue;
+  private spamFilter?: SpamFilterManager;
   
   // Mode and source management
   public readonly mode: 'polling' | 'webhook';
@@ -54,6 +58,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     this.runtime = opts.runtime;
     this.config = opts.config;
     this.asyncQueue = new AsyncQueue(1);
+    this.spamFilter = opts.spamFilter;
     
     // Initialize mode and source
     this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
@@ -297,6 +302,25 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       currentPost,
       formattedConversation,
     };
+
+    // Spam filter check
+    if (this.config.SPAM_FILTER_ENABLED && this.spamFilter) {
+      if (this.spamFilter.isUserBlocked(memory.entityId)) {
+        logger.warn(`User ${mention.profile.username} is blocked. Ignoring mention.`);
+        return;
+      }
+
+      const spamPrompt = this.config.SPAM_FILTER_PROMPT || shouldRespondSecurityTemplate;
+      const spamCheckPrompt = composePrompt({ state, template: spamPrompt });
+      const spamResponse = await this.runtime.useModel(ModelType.TEXT_SMALL, { prompt: spamCheckPrompt });
+      const spamAction = (spamResponse.match(/(?:RESPOND|STOP)/g) || ['RESPOND'])[0];
+
+      if (spamAction === 'STOP') {
+        logger.warn(`Spam filter triggered for user ${mention.profile.username}. Adding to blocklist.`);
+        this.spamFilter.addUserToBlockList(mention.profile.username, memory.entityId);
+        return;
+      }
+    }
 
     // Determine if we should respond to the cast
     const shouldRespondPrompt = composePrompt({

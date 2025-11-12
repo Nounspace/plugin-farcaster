@@ -122,6 +122,19 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         runtime.getSetting('FARCASTER_MODE') || 
         process.env.FARCASTER_MODE || 
         'polling',
+
+      // Spam filter settings
+      SPAM_FILTER_ENABLED:
+        runtime.getSetting('SPAM_FILTER_ENABLED') ||
+        process.env.SPAM_FILTER_ENABLED,
+      
+      SPAM_FILTER_SHARED:
+        runtime.getSetting('SPAM_FILTER_SHARED') ||
+        process.env.SPAM_FILTER_SHARED,
+
+      SPAM_FILTER_PROMPT:
+        runtime.getSetting('SPAM_FILTER_PROMPT') ||
+        process.env.SPAM_FILTER_PROMPT,
     };
 
     logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);

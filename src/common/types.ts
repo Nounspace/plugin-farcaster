@@ -75,6 +75,17 @@ export const FarcasterConfigSchema = z.object({
   FARCASTER_SIGNER_UUID: z.string().min(1, 'FARCASTER_SIGNER_UUID is not set'),
   FARCASTER_NEYNAR_API_KEY: z.string().min(1, 'FARCASTER_NEYNAR_API_KEY is not set'),
   FARCASTER_HUB_URL: z.string().min(1, 'FARCASTER_HUB_URL is not set'),
+
+  // Spam filter settings
+  SPAM_FILTER_ENABLED: z
+    .union([z.boolean(), z.string()])
+    .default(false)
+    .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
+  SPAM_FILTER_SHARED: z
+    .union([z.boolean(), z.string()])
+    .default(true)
+    .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
+  SPAM_FILTER_PROMPT: z.string().optional(),
 });
 
 export type FarcasterConfig = z.infer<typeof FarcasterConfigSchema>;

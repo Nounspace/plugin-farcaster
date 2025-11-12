@@ -4,6 +4,7 @@ import { FarcasterClient } from '../client';
 import { type FarcasterConfig } from '../common/types';
 import { FarcasterCastManager } from './post';
 import { FarcasterInteractionManager } from './interactions';
+import { SpamFilterManager } from './spamFilterManager';
 
 /**
  * A manager that orchestrates all Farcaster operations:
@@ -16,8 +17,9 @@ export class FarcasterAgentManager {
   readonly client: FarcasterClient;
   readonly casts: FarcasterCastManager;
   readonly interactions: FarcasterInteractionManager;
+  readonly spamFilter?: SpamFilterManager;
 
-  constructor(runtime: IAgentRuntime, config: FarcasterConfig) {
+  constructor(runtime: IAgentRuntime, config: FarcasterConfig, spamFilter?: SpamFilterManager) {
     this.runtime = runtime;
     const signerUuid = config.FARCASTER_SIGNER_UUID;
 
@@ -26,11 +28,12 @@ export class FarcasterAgentManager {
     const client = new FarcasterClient({ neynar, signerUuid });
 
     this.client = client;
+    this.spamFilter = spamFilter;
 
     logger.success('Farcaster Neynar client initialized.');
 
     // Initialize managers
-    this.interactions = new FarcasterInteractionManager({ client, runtime, config });
+    this.interactions = new FarcasterInteractionManager({ client, runtime, config, spamFilter });
     this.casts = new FarcasterCastManager({ client, runtime, config });
   }
 

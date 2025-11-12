@@ -36,6 +36,7 @@ This plugin leverages the [Neynar API](https://neynar.com) and implements full E
 - **Metadata Tracking**: Store cast metadata for reference
 - **Health Monitoring**: Built-in health check functionality
 - **Caching**: Efficient caching for improved performance
+- **Spam Filter**: Configurable spam filter to avoid engaging with unwanted content
 
 ## Installation
 
@@ -140,6 +141,8 @@ The plugin requires the following configurations, which can be set via environme
 | `CAST_IMMEDIATELY`         | Cast immediately on startup (true/false)            | false   |
 | `MAX_ACTIONS_PROCESSING`   | Maximum actions to process in one cycle             | 1       |
 | `ACTION_TIMELINE_TYPE`     | Type of timeline to use for actions                 | ForYou  |
+| `SPAM_FILTER_ENABLED`      | Enable or disable the spam filter                   | false   |
+| `SPAM_FILTER_SHARED`       | Use a shared spam filter for all agents             | true    |
 
 ## Usage
 
@@ -157,6 +160,28 @@ The plugin requires the following configurations, which can be set via environme
     "FARCASTER_NEYNAR_API_KEY": "your-api-key",
     "FARCASTER_SIGNER_UUID": "your-signer-uuid",
     "FARCASTER_MODE": "webhook"
+  }
+}
+```
+
+### Spam Filter Configuration
+
+You can configure the spam filter in your agent's character file:
+
+```json
+{
+  "name": "MyFarcasterAgent",
+  "bio": "An AI agent on Farcaster",
+  "plugins": ["@elizaos/plugin-farcaster"],
+  "settings": {
+    "FARCASTER_FID": "123456",
+    "FARCASTER_NEYNAR_API_KEY": "your-api-key",
+    "FARCASTER_SIGNER_UUID": "your-signer-uuid",
+    "SPAM_FILTER_ENABLED": true,
+    "SPAM_FILTER_SHARED": false
+  },
+  "templates": {
+    "spamFilterPrompt": "Your custom spam filter prompt here"
   }
 }
 ```
@@ -254,6 +279,7 @@ The plugin is organized into several core components:
 - **FarcasterAgentManager**: Manages agent-specific connections
 - **FarcasterInteractionManager**: Handles mentions and replies
 - **FarcasterCastManager**: Manages autonomous casting
+- **SpamFilterManager**: Manages spam detection and user blocking
 
 ### Components
 - **Actions**: User-triggered capabilities (SEND_CAST, REPLY_TO_CAST)

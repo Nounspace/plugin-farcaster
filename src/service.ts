@@ -4,12 +4,14 @@ import { FarcasterAgentManager } from './managers/agent';
 import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
 import { FarcasterMessageService } from './services/MessageService';
 import { FarcasterCastService } from './services/CastService';
+import { SpamFilterManager } from './managers/spamFilterManager';
 
 export class FarcasterService extends Service {
   private static instance?: FarcasterService;
   private managers = new Map<UUID, FarcasterAgentManager>();
   private messageServices = new Map<UUID, FarcasterMessageService>();
   private castServices = new Map<UUID, FarcasterCastService>();
+  private sharedSpamFilter?: SpamFilterManager;
 
   // Properly implement serviceType for discoverability
   static serviceType = FARCASTER_SERVICE_NAME;
@@ -46,7 +48,20 @@ export class FarcasterService extends Service {
     }
 
     const farcasterConfig = validateFarcasterConfig(runtime);
-    manager = new FarcasterAgentManager(runtime, farcasterConfig);
+
+    let spamFilter: SpamFilterManager | undefined;
+    if (farcasterConfig.SPAM_FILTER_ENABLED) {
+      if (farcasterConfig.SPAM_FILTER_SHARED) {
+        if (!service.sharedSpamFilter) {
+          service.sharedSpamFilter = new SpamFilterManager();
+        }
+        spamFilter = service.sharedSpamFilter;
+      } else {
+        spamFilter = new SpamFilterManager();
+      }
+    }
+
+    manager = new FarcasterAgentManager(runtime, farcasterConfig, spamFilter);
     service.managers.set(runtime.agentId, manager);
 
     // Create and store MessageService and CastService instances
