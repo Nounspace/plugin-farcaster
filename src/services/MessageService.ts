@@ -20,6 +20,7 @@ interface Message {
 }
 
 interface GetMessagesOptions {
+  agentId: UUID;
   roomId?: string;
   limit?: number;
 }
@@ -72,7 +73,7 @@ export class FarcasterMessageService implements IMessageService {
 
   async getMessages(options: GetMessagesOptions): Promise<Message[]> {
     try {
-      const { roomId, limit = 20 } = options;
+      const { agentId, roomId, limit = 20 } = options;
 
       // Get mentions and timeline
       const { timeline } = await this.client.getTimeline({
@@ -83,7 +84,7 @@ export class FarcasterMessageService implements IMessageService {
       });
 
       const messages: Message[] = timeline
-        .map((cast) => this.castToMessage(cast, this.runtime.agentId))
+        .map((cast) => this.castToMessage(cast, agentId))
         .filter((message) => {
           if (roomId) {
             return message.roomId === roomId;
@@ -94,7 +95,6 @@ export class FarcasterMessageService implements IMessageService {
       return messages;
     } catch (error) {
       logger.error(`[Farcaster] Error fetching messages: ${JSON.stringify(error)}`);
-      //logger.error({ error }, '[Farcaster] Error fetching messages:');
       return [];
     }
   }
