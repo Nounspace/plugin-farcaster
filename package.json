@@ -110,13 +110,13 @@
         "default": 1000,
         "sensitive": false
       },
-      "POST_IMMEDIATELY": {
+      "CAST_IMMEDIATELY": {
         "type": "boolean",
         "description": "If true, posts are published immediately instead of waiting for a schedule.",
         "required": false,
-        "default": true,
+        "default": false,
         "sensitive": false
-      },
+      },      
       "MAX_ACTIONS_PROCESSING": {
         "type": "number",
         "description": "Maximum number of Farcaster actions to process in a single batch.",
