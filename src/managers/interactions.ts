@@ -313,7 +313,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const spamPrompt = this.config.SPAM_FILTER_PROMPT || shouldRespondSecurityTemplate;
       const spamCheckPrompt = composePrompt({ state, template: spamPrompt });
       const spamResponse = await this.runtime.useModel(ModelType.TEXT_SMALL, { prompt: spamCheckPrompt });
-      const spamAction = (spamResponse.match(/(?:RESPOND|STOP)/g) || ['RESPOND'])[0];
+      const spamAction = (spamResponse.match(/(?:CONTINUE|STOP)/g) || ['RESPOND'])[0];
 
       if (spamAction === 'STOP') {
         logger.warn(`Spam filter triggered for user ${mention.profile.username}. Adding to blocklist.`);
