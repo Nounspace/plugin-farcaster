@@ -114,7 +114,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agent = await this.client.getProfile(agentFid);
     const mention = neynarCastToCast(cast);
     
-    await this.handleMentionCast({ agent, mention, cast });
+    await this.handleMentionCast({ agent, mention, neynarCast: cast });
   }
 
   /**
@@ -126,17 +126,12 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agent = await this.client.getProfile(agentFid);
     const reply = neynarCastToCast(cast);
     
-    await this.handleMentionCast({ agent, mention: reply, cast });
+    await this.handleMentionCast({ agent, mention: reply, neynarCast: cast });
   }
 
   async processStreamedCast(cast: Cast): Promise<void> {
     logger.info(`Processing streamed cast: ${cast.hash}`);
-    const agentFid = this.config.FARCASTER_FID;
-    const agent = await this.client.getProfile(agentFid);
-    
-    // We need to get the full NeynarCast object to use handleMentionCast
-    const neynarCast = await this.client.getCast(cast.hash);
-    await this.handleMentionCast({ agent, mention: cast, cast: neynarCast });
+    await this.handleStreamedMentionCast(cast);
   }
 
   /**
@@ -299,14 +294,29 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     return thread;
   }
 
+  private async handleStreamedMentionCast(mention: Cast): Promise<void> {
+    if (mention.authorFid === this.config.FARCASTER_FID) {
+        logger.info('skipping cast from bot itself', mention.hash);
+        return;
+    }
+
+    const memory = await this.ensureCastConnection(mention);
+    const thread: Cast[] = await this.buildThreadForCast(
+        mention,
+        memory.id ? new Set([memory.id]) : new Set()
+    );
+
+    await this.processInteractionLogic(mention, thread, memory);
+  }
+
   private async handleMentionCast({
     agent,
     mention,
-    cast,
+    neynarCast,
   }: {
     agent: Profile;
-    cast: NeynarCast;
     mention: Cast;
+    neynarCast: NeynarCast;
   }): Promise<void> {
     
     if (mention.authorFid === agent.fid) {
@@ -314,17 +324,35 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       return;
     }
 
-    // Process one at a time to ensure proper sequencing
     const memory = await this.ensureCastConnection(mention);
     const thread: Cast[] = await this.buildThreadForCast(
       mention,
       memory.id ? new Set([memory.id]) : new Set()
     );
 
+    await this.processInteractionLogic(mention, thread, memory);
+
+    // Emit platform-specific MENTION_RECEIVED event
+    const mentionPayload: FarcasterGenericCastPayload = {
+      runtime: this.runtime,
+      memory,
+      cast: neynarCast,
+      source: FARCASTER_SOURCE,
+      callback: async (content: Content, _files?: any[]) => {
+        logger.info('Farcaster','mention received response:', content);
+        return [];
+      },
+    };
+    this.runtime.emitEvent(FarcasterEventTypes.MENTION_RECEIVED, mentionPayload);
+  }
+
+  private async processInteractionLogic(mention: Cast, thread: Cast[], memory: Memory): Promise<void> {
     if (!memory.content.text || memory.content.text.trim() === '') {
       logger.info('skipping cast with no text', mention.hash);
       return;
     }
+
+    const agent = await this.client.getProfile(this.config.FARCASTER_FID);
 
     // Build the state for the prompt
     const currentPost = formatCast(mention);
@@ -333,7 +361,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const formattedConversation = thread
       .map((c) =>
         `
-        - @${c.username} (${c.timestamp}):
+        - @${c.username} (${formatCastTimestamp(c.timestamp)}):
           ${c.text}`.trim()
       )
       .join('\n\n');
@@ -412,19 +440,6 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     };
 
     this.runtime.emitEvent(EventType.MESSAGE_RECEIVED, messageReceivedPayload);
-
-    // Emit platform-specific MENTION_RECEIVED event
-    const mentionPayload: FarcasterGenericCastPayload = {
-      runtime: this.runtime,
-      memory,
-      cast,
-      source: FARCASTER_SOURCE,
-      callback: async (content: Content, _files?: any[]) => {
-        logger.info('[Farcaster] mention received response:', response);
-        return [];
-      },
-    };
-    this.runtime.emitEvent(FarcasterEventTypes.MENTION_RECEIVED, mentionPayload);
   }
 
   /**
@@ -440,7 +455,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
    */
   async stop(): Promise<void> {
     logger.info('Stopping Farcaster interaction manager');
-    await this.source.stop();
+await this.source.stop();
   }
 
   public getInteractionConfig():FarcasterConfig {

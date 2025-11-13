@@ -3,7 +3,7 @@ import type { Cast } from './types';
 
 export const formatCast = (cast: Cast) => {
   return `ID: ${cast.hash}
-    From: ${cast.profile.name} (@${cast.profile.username})${cast.profile.username})${cast.inReplyTo ? `\nIn reply to: ${cast.inReplyTo.fid}` : ''}
+From: @${cast.username} ${cast.inReplyTo ? `\nIn reply to: ${cast.inReplyTo.fid}` : ''}
 Text: ${cast.text}`;
 };
 

@@ -116,22 +116,27 @@ export function farcasterTimeToDate(time: number | null | undefined): Date | nul
 
 export function neynarCastToCast(neynarCast: NeynarCast): Cast {
   return {
-  hash: neynarCast.hash,
-  authorFid: neynarCast.author.fid,
-  username: neynarCast.author.username,
-  text: neynarCast.text,
-  threadId: neynarCast.thread_hash ?? undefined,
-  timestamp: new Date(neynarCast.timestamp),
-  ...(neynarCast.parent_hash && neynarCast.parent_author?.fid
-    ? {
-      inReplyTo: {
-        hash: neynarCast.parent_hash,
-        fid: neynarCast.parent_author.fid,
-      },
-    }
-    : {}),
-  type: 'mention'
-};
+    hash: neynarCast.hash,
+    authorFid: neynarCast.author.fid,
+    username: neynarCast.author.username,
+    text: neynarCast.text,
+    threadId: neynarCast.thread_hash ?? undefined,
+    timestamp: new Date(neynarCast.timestamp),
+    ...(neynarCast.parent_hash && neynarCast.parent_author?.fid
+      ? {
+          inReplyTo: {
+            hash: neynarCast.parent_hash,
+            fid: neynarCast.parent_author.fid,
+          },
+        }
+      : {}),
+    stats: {
+      likes: neynarCast.reactions?.likes_count ?? 0,
+      recasts: neynarCast.reactions?.recasts_count ?? 0,
+      replies: neynarCast.replies?.count ?? 0,
+    },
+    type: 'mention',
+  };
 }
 
 
