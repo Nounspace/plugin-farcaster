@@ -129,9 +129,9 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         process.env.FARCASTER_HUB_RPC ||
         "http://hub-grpc-api.neynar.com",
       
-      FARCASTER_TARGET_CHANNELS:
-        runtime.getSetting('FARCASTER_TARGET_CHANNELS') ||
-        process.env.FARCASTER_TARGET_CHANNELS,
+      FARCASTER_TARGET_CHANNEL:
+        runtime.getSetting('FARCASTER_TARGET_CHANNEL') ||
+        process.env.FARCASTER_TARGET_CHANNEL,
       
       FARCASTER_TARGET_USERS:
         runtime.getSetting('FARCASTER_TARGET_USERS') ||

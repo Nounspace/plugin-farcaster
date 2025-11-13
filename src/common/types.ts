@@ -66,7 +66,7 @@ export const FarcasterConfigSchema = z.object({
 
   // Stream configuration
   FARCASTER_HUB_RPC: z.string().optional(),
-  FARCASTER_TARGET_CHANNELS: z.string().optional(),
+  FARCASTER_TARGET_CHANNEL: z.string().optional(),
   FARCASTER_TARGET_USERS: z.string().optional(),
   FARCASTER_TARGET_REGEX: z.string().optional(),
 

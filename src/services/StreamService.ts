@@ -1,6 +1,6 @@
 import { IAgentRuntime, logger, MemoryType } from '@elizaos/core';
 import type { MemoryScope } from "@elizaos/core";
-
+import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import {
     HubEvent,
     HubEventType,
@@ -211,7 +211,71 @@ export class FarcasterStreamService extends EventEmitter {
 
             switch (msgType) {
                 case MessageType.CAST_ADD: {
-                    // console.dir(msg);
+                    this.handleAddCast(msg);
+                    break
+                }
+                case MessageType.CAST_REMOVE: {
+                    // logger.debug(`Farcaster: Handling CAST_REMOVE (unimplemented): ${this.bytesToHex(msg.hash)}`);
+                    break
+                }
+                case MessageType.REACTION_ADD: {
+                    // logger.debug(`Farcaster: Handling REACTION_ADD (unimplemented): ${this.bytesToHex(msg.hash)}`);
+                    break
+                }
+                default: {
+                    // logger.info(`Farcaster: UNHANDLED MERGE_MESSAGE EVENT type: ${msgType}, ID: ${event.id}`);
+                }
+            }
+        }
+    }
+
+    private async handleAddCast(msg: Message) {
+        if (!msg.data) return;
+
+        const castAddBody = msg.data?.castAddBody;
+        if (!castAddBody) return;
+
+        const agentFid = this.config.FARCASTER_FID;
+        const authorFid = msg.data!.fid;
+
+        const isMention = castAddBody.mentions.includes(agentFid);
+        const isReply = castAddBody.parentCastId?.fid === agentFid;
+
+        const targetChannels = (this.config.FARCASTER_TARGET_CHANNEL || '').split(',').filter(Boolean);
+        const isFromTargetChannel = castAddBody.parentUrl && 
+                targetChannels.some(channel => castAddBody.parentUrl!.includes(channel));
+
+        const targetUsers = (this.config.FARCASTER_TARGET_USERS || '').split(',').map(Number).filter(Boolean);
+        const isFromTargetUser = targetUsers.includes(authorFid);
+
+        let castType: CastType = 'other';
+        if (isMention) {
+            castType = 'mention';
+            logger.debug("Farcaster", "Is Mention", castAddBody.mentions)
+        } else if (isReply) {
+            castType = 'reply';
+            logger.debug("Farcaster", "Is Reply", castAddBody.parentCastId?.fid)
+        } else if (isFromTargetChannel) {
+            castType = 'channel';
+            logger.debug("Farcaster", "Is channel", castAddBody.parentUrl)
+        } else if (isFromTargetUser) {
+            castType = 'user';
+            logger.debug("Farcaster", "Is isFromTargetUser", targetUsers)
+        }
+
+        if (castType == 'other') return
+        
+        try {
+            const cast = await this.createCastObj(msg, castType);
+            if (cast) {
+                // const neynarCast = await this.castToNeynarCast(cast)
+                this.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, cast);
+            }
+        } catch (error: any) {
+            logger.error(`Error processing cast in handleAddCast for FID ${authorFid}:`, error);
+        }
+    }
+
 /*** Sample data
 {
   data: {
@@ -277,65 +341,6 @@ export class FarcasterStreamService extends EventEmitter {
   dataBytes: Buffer(54) [...],
 }
                      */
-                    this.handleAddCast(msg);
-                    break
-                }
-                case MessageType.CAST_REMOVE: {
-                    // logger.debug(`Farcaster: Handling CAST_REMOVE (unimplemented): ${this.bytesToHex(msg.hash)}`);
-                    break
-                }
-                case MessageType.REACTION_ADD: {
-                    // logger.debug(`Farcaster: Handling REACTION_ADD (unimplemented): ${this.bytesToHex(msg.hash)}`);
-                    break
-                }
-                default: {
-                    // logger.info(`Farcaster: UNHANDLED MERGE_MESSAGE EVENT type: ${msgType}, ID: ${event.id}`);
-                }
-            }
-        }
-    }
-
-    private async handleAddCast(msg: Message) {
-        if (!msg.data) return;
-
-        const castAddBody = msg.data?.castAddBody;
-        if (!castAddBody) return;
-
-        const agentFid = this.config.FARCASTER_FID;
-        const authorFid = msg.data!.fid;
-
-        const isMention = castAddBody.mentions.includes(agentFid);
-        const isReply = castAddBody.parentCastId?.fid === agentFid;
-
-        const targetChannels = (this.config.FARCASTER_TARGET_CHANNELS || '').split(',').filter(Boolean);
-        const isFromTargetChannel = castAddBody.parentUrl && 
-                targetChannels.some(channel => castAddBody.parentUrl!.includes(channel));
-
-        const targetUsers = (this.config.FARCASTER_TARGET_USERS || '').split(',').map(Number).filter(Boolean);
-        const isFromTargetUser = targetUsers.includes(authorFid);
-
-        let castType: CastType = 'other';
-        if (isMention) {
-            castType = 'mention';
-            logger.debug("Farcaster", "Is Mention", castAddBody.mentions)
-        } else if (isReply) {
-            castType = 'reply';
-            logger.debug("Farcaster", "Is Reply", castAddBody.parentCastId?.fid)
-        } else if (isFromTargetChannel) {
-            castType = 'channel';
-            logger.debug("Farcaster", "Is channel", castAddBody.parentUrl)
-        } else if (isFromTargetUser) {
-            castType = 'user';
-            logger.debug("Farcaster", "Is isFromTargetUser", targetUsers)
-        }
-
-        try {
-            const cast = await this.createCastObj(msg, castType);
-            if (cast) this.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, cast);
-        } catch (error: any) {
-            logger.error(`Error processing cast in handleAddCast for FID ${authorFid}:`, error);
-        }
-    }
 
     private async createCastObj(message: Message, type: CastType): Promise<Cast | undefined> {
         if (!message.data || !message.data.castAddBody) return;
@@ -353,7 +358,7 @@ export class FarcasterStreamService extends EventEmitter {
             fid: castAddBody.parentCastId.fid,
         } : undefined;
 
-        return {
+        const cast = {
             hash,
             authorFid: message.data.fid,
             username: await this.getUsernameFromFid(message.data.fid),
@@ -362,7 +367,68 @@ export class FarcasterStreamService extends EventEmitter {
             timestamp: farcasterTimeToDate(message.data.timestamp),
             type,
         };
+
+        return cast;
     }
+
+
+    // private async castToNeynarCast(
+    // cast: Cast
+    // ): Promise<NeynarCast> {
+    // const author = await this.client.getProfile(cast.authorFid);
+    
+    // const parent_author = cast.inReplyTo
+    //     ? await this.client.getProfile(cast.inReplyTo.fid)
+    //     : null;
+
+    // return {
+    //     object: "cast",
+    //     hash: cast.hash,
+    //     parent_hash: cast.inReplyTo?.hash ?? null,
+    //     parent_url: null,
+    //     root_parent_url: null,
+    //     parent_author: parent_author
+    //     ? {
+    //         fid: parent_author.fid,
+    //         username: parent_author.username,
+    //         }
+    //     : ({} as any),
+
+    //     author: {
+    //         ...author, 
+    //         follower_count: 0,
+    //         following_count: 0,
+    //         custody_address: "",
+    //         verifications: [],
+    //         verified_addresses: [],
+    //     },
+    //     app: null,
+    //     text: cast.text,
+    //     timestamp: cast.timestamp.toISOString(),
+    //     embeds: [],
+
+    //     type: undefined,
+    //     reactions: {
+    //     likes: [],
+    //     recasts: [],
+    //     likes_count: cast.stats?.likes ?? 0,
+    //     recasts_count: cast.stats?.recasts ?? 0,
+    //     },
+    //     replies: {
+    //     count: cast.stats?.replies ?? 0,
+    //     },
+
+    //     thread_hash: cast.threadId ?? null,
+    //     mentioned_profiles: [],
+    //     mentioned_profiles_ranges: [],
+    //     mentioned_channels: [],
+    //     mentioned_channels_ranges: [],
+    //     channel: null,
+    //     viewer_context: undefined,
+    //     author_channel_context: undefined,
+    // };
+    // }
+
 
     private bytesToHex(value: Uint8Array): `0x${string}` {
         return `0x${Buffer.from(value).toString("hex")}`;

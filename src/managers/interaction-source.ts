@@ -146,7 +146,7 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
 export class FarcasterStreamSource extends FarcasterInteractionSource {
     private streamService: FarcasterStreamService | undefined;
     private streamCastHandler = (cast: Cast) => {
-        console.dir(cast)
+        this.processor.processStreamedCast(cast)
     };
 
     async start(): Promise<void> {
