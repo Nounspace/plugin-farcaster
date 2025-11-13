@@ -1,12 +1,15 @@
 import { logger } from '@elizaos/core';
 import { FarcasterInteractionSource } from './interaction-source';
 import { FarcasterStreamService } from '../services/stream-service';
-import { Cast } from '../common/types';
+import { Cast, FarcasterEventTypes } from '../common/types';
 
 export class FarcasterStreamSource extends FarcasterInteractionSource {
     private streamService: FarcasterStreamService;
     private castHandler = (cast: Cast) => {
-        this.processor.processStreamedCast(cast);
+        this.runtime.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, {
+            runtime: this.runtime,
+            cast: cast,
+        });
     };
 
     async start(): Promise<void> {
