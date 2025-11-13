@@ -37,6 +37,45 @@ This plugin leverages the [Neynar API](https://neynar.com) and implements full E
 - **Health Monitoring**: Built-in health check functionality
 - **Caching**: Efficient caching for improved performance
 - **Spam Filter**: Configurable spam filter to avoid engaging with unwanted content
+- **Profile Fetcher**: (Bulk + Intelligent Mode)
+- **Stream Mode**: New Stream Mode for farcaster stream from rpc
+
+### Profile Fetcher (Bulk + Intelligent Mode)
+
+The plugin now includes an enhanced Farcaster Profile Fetcher, designed for efficient and intelligent user data retrieval.
+
+Key Capabilities
+
+Bulk Fetch Mode — Fetch and update multiple Farcaster profiles in a single optimized request (reduces API calls, improves performance).
+
+Intelligent Refresh Logic — Automatically prioritizes which profiles to refresh based on:
+
+Recency of last update
+
+Activity level of the user
+
+Relevance to the agent’s current conversations or mentions
+
+Resilient Fetching with Exponential Backoff — Handles transient API limits gracefully using adaptive retry intervals.
+
+Caching Integration — Works seamlessly with the plugin’s LRU cache layer to minimize redundant requests.
+
+Auto-Merge — Merges partial data updates intelligently (e.g., if display name or follower count changes).
+
+Example Usage
+
+Profiles are fetched automatically whenever:
+
+A new mention or reply references an unknown FID
+
+Bulk synchronization runs at startup or scheduled intervals
+
+The agent requests updated profile context before replying
+
+```
+const farcasterService = runtime.getService('farcaster');
+const profiles = await farcasterService.profileFetcher.fetchProfilesBulk([fid1, fid2, fid3]);
+```
 
 ## Installation
 
