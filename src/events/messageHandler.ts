@@ -48,9 +48,9 @@ export const handleCastSent = async (payload: {
       'metadata'
     );
 
-    logger.info(`[FarcasterMessageHandler] Stored cast metadata: ${castHash}`);
+    logger.info("FarcasterMessageHandler", `Stored cast metadata: ${castHash}`);
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error storing cast metadata:', error);
+    logger.error("FarcasterMessageHandler", 'Error storing cast metadata:', error);
   }
 };
 
@@ -95,7 +95,7 @@ export const handleCastReceived = async (payload: MessagePayload): Promise<void>
       logger.info(`[FarcasterMessageHandler] Processed incoming cast: ${castHash}`);
     }
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error processing incoming cast:', error);
+    logger.error("FarcasterMessageHandler", 'Error processing incoming cast:', error);
   }
 };
 
@@ -137,7 +137,7 @@ export const handleReplyTracking = async (payload: {
       `[FarcasterMessageHandler] Linked reply ${replyCastHash} to parent ${parentCastHash}`
     );
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error tracking reply relationship:', error);
+    logger.error("FarcasterMessageHandler", 'Error tracking reply relationship:', error);
   }
 };
 

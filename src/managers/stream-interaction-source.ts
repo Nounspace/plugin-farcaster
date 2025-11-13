@@ -6,7 +6,7 @@ import { Cast, FarcasterEventTypes } from '../common/types';
 export class FarcasterStreamSource extends FarcasterInteractionSource {
     private streamService: FarcasterStreamService;
     private castHandler = (cast: Cast) => {
-        this.runtime.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, {
+        this.runtime.emitEvent(FarcasterEventTypes.STREAM_CAST_RECEIVED, {
             runtime: this.runtime,
             cast: cast,
         });
