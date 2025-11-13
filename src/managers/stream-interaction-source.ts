@@ -4,13 +4,14 @@ import { FarcasterStreamService } from '../services/stream-service';
 import { Cast, FarcasterEventTypes } from '../common/types';
 
 export class FarcasterStreamSource extends FarcasterInteractionSource {
-    private streamService: FarcasterStreamService;
+    private streamService: FarcasterStreamService | undefined;
     private castHandler = (cast: Cast) => {
         this.runtime.emitEvent(FarcasterEventTypes.STREAM_CAST_RECEIVED, {
             runtime: this.runtime,
             cast: cast,
         });
     };
+
 
     async start(): Promise<void> {
         logger.info('Starting Farcaster stream mode');
