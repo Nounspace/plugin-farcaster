@@ -2,6 +2,9 @@ import { IAgentRuntime, Memory, stringToUuid, UUID } from '@elizaos/core';
 import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { FARCASTER_SOURCE } from './constants';
 import { Cast } from './types';
+import {
+    fromFarcasterTime,
+} from '@farcaster/hub-nodejs';
 
 export const MAX_CAST_LENGTH = 1024; // Farcaster cast character limit
 
@@ -100,27 +103,35 @@ export function lastCastCacheKey(fid: number) {
   return `farcaster/${fid}/lastCast`;
 }
 
+export function farcasterTimeToDate(time: number): Date;
+export function farcasterTimeToDate(time: null): null;
+export function farcasterTimeToDate(time: undefined): undefined;
+export function farcasterTimeToDate(time: number | null | undefined): Date | null | undefined {
+        if (time === undefined) return undefined;
+        if (time === null) return null;
+        const result = fromFarcasterTime(time);
+        if (result.isErr()) throw result.error;
+        return new Date(result.value);
+    }
+
 export function neynarCastToCast(neynarCast: NeynarCast): Cast {
   return {
-    hash: neynarCast.hash,
-    authorFid: neynarCast.author.fid,
-    text: neynarCast.text,
-    threadId: neynarCast.thread_hash ?? undefined,
-    profile: {
-      fid: neynarCast.author.fid,
-      name: neynarCast.author.display_name || 'anon',
-      username: neynarCast.author.username,
-    },
-    ...(neynarCast.parent_hash && neynarCast.parent_author?.fid
-      ? {
-          inReplyTo: {
-            hash: neynarCast.parent_hash,
-            fid: neynarCast.parent_author.fid,
-          },
-        }
-      : {}),
-    timestamp: new Date(neynarCast.timestamp),
-  };
+  hash: neynarCast.hash,
+  authorFid: neynarCast.author.fid,
+  username: neynarCast.author.username,
+  text: neynarCast.text,
+  threadId: neynarCast.thread_hash ?? undefined,
+  timestamp: new Date(neynarCast.timestamp),
+  ...(neynarCast.parent_hash && neynarCast.parent_author?.fid
+    ? {
+      inReplyTo: {
+        hash: neynarCast.parent_hash,
+        fid: neynarCast.parent_author.fid,
+      },
+    }
+    : {}),
+  type: 'mention'
+};
 }
 
 export function createCastMemory({

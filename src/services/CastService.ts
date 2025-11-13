@@ -18,7 +18,7 @@ interface FarcasterCast {
   userId: string;
   username: string;
   text: string;
-  timestamp: number;
+  timestamp: Date;
   inReplyTo?: string;
   media?: any[];
   metadata?: any;
@@ -39,15 +39,10 @@ export interface CastServiceInterface {
   }): Promise<FarcasterCast>;
 
   deleteCast(params: { agentId: UUID; castHash: string }): Promise<void>;
-
   likeCast(params: { agentId: UUID; castHash: string }): Promise<void>;
-
   unlikeCast(params: { agentId: UUID; castHash: string }): Promise<void>;
-
   recast(params: { agentId: UUID; castHash: string }): Promise<void>;
-
   unrecast(params: { agentId: UUID; castHash: string }): Promise<void>;
-
   getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]>;
 }
 
@@ -125,10 +120,10 @@ export class FarcasterCastService implements CastServiceInterface {
         id: castUuid({ hash: cast.hash, agentId: params.agentId }),
         agentId: params.agentId,
         roomId: params.roomId,
-        userId: cast.profile.fid.toString(),
-        username: cast.profile.username,
+        userId: cast.authorFid.toString(),
+        username: cast.username,
         text: cast.text,
-        timestamp: cast.timestamp.getTime(),
+        timestamp: new Date(cast.timestamp),
         inReplyTo: params.replyTo?.hash,
         media: [], // TODO: Handle media upload when Farcaster API supports it
         metadata: {
@@ -338,10 +333,10 @@ export class FarcasterCastService implements CastServiceInterface {
       id: castUuid({ hash: cast.hash, agentId }),
       agentId,
       roomId: createUniqueUuid(this.runtime, cast.threadId || cast.hash),
-      userId: cast.profile.fid.toString(),
-      username: cast.profile.username,
+      userId: cast.authorFid.toString(),
+      username: cast.username,
       text: cast.text,
-      timestamp: cast.timestamp.getTime(),
+      timestamp: cast.timestamp,
       media: [], // Farcaster casts can have embedded media but not in our Cast type
       metadata: {
         castHash: cast.hash,

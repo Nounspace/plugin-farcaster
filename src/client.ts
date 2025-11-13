@@ -1,4 +1,4 @@
-import { Content, elizaLogger } from '@elizaos/core';
+import { Content, logger } from '@elizaos/core';
 import { type NeynarAPIClient, isApiErrorResponse } from '@neynar/nodejs-sdk';
 import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 // @ts-ignore
@@ -6,6 +6,8 @@ import { LRUCache } from 'lru-cache';
 import { DEFAULT_CAST_CACHE_SIZE, DEFAULT_CAST_CACHE_TTL } from './common/constants';
 import type { Cast, CastId, FidRequest, Profile } from './common/types';
 import { neynarCastToCast, splitPostContent } from './common/utils';
+import { ProfileFetcher } from './services/ProfileFetcher';
+
 
 // add global cast cache
 const castCache: LRUCache<string, NeynarCast> = new LRUCache({
@@ -22,9 +24,12 @@ const profileCache: LRUCache<number, Profile> = new LRUCache({
 export class FarcasterClient {
   private neynar: NeynarAPIClient;
   private signerUuid: string;
+  private profileFetcher: ProfileFetcher;
+
   constructor(opts: { neynar: NeynarAPIClient; signerUuid: string }) {
     this.neynar = opts.neynar;
     this.signerUuid = opts.signerUuid;
+    this.profileFetcher = new ProfileFetcher(this.neynar);
   }
 
   async sendCast({
@@ -62,10 +67,10 @@ export class FarcasterClient {
       throw new Error(`[Farcaster] Error publishing [${cast}] parentCastId: [${parentCastId}]`);
     } catch (err) {
       if (isApiErrorResponse(err)) {
-        elizaLogger.error(`Neynar error: ${JSON.stringify(err.response.data)}`);
+        logger.error(`Neynar error: ${JSON.stringify(err.response.data)}`);
         throw err.response.data;
       } else {
-        elizaLogger.error(`Error: ${JSON.stringify(err)}`);
+        logger.error(`Error: ${JSON.stringify(err)}`);
         throw err;
       }
     }
@@ -101,38 +106,44 @@ export class FarcasterClient {
     return mentions;
   }
 
+  // async getProfile(fid: number): Promise<Profile> {
+  //   if (profileCache.has(fid)) {
+  //     return profileCache.get(fid) as Profile;
+  //   }
+
+  //   logger.warn("GetProfile", `for user FID ${fid}`)
+
+  //   try {
+  //     const result = await this.neynar.fetchBulkUsers({ fids: [fid] });
+  //     if (!result.users || result.users.length < 1) {
+  //       elizaLogger.error('Error fetching user by fid');
+  //       // throw new Error('Profile fetch failed');
+  //     }
+
+  //     const neynarUserProfile = result.users[0];
+
+  //     const profile: Profile = {
+  //       fid,
+  //       name: '',
+  //       username: '',
+  //     };
+
+  //     profile.name = neynarUserProfile.display_name!;
+  //     profile.username = neynarUserProfile.username;
+  //     profile.bio = neynarUserProfile.profile.bio.text;
+  //     profile.pfp = neynarUserProfile.pfp_url;
+  //     profile.score = neynarUserProfile.score;
+
+  //     profileCache.set(fid, profile);
+
+  //     return profile;
+  //   } catch (error) {
+  //     elizaLogger.error(`Error fetching profile: ${JSON.stringify(error)}`);
+  //     throw error;
+  //   }
+  // }
   async getProfile(fid: number): Promise<Profile> {
-    if (profileCache.has(fid)) {
-      return profileCache.get(fid) as Profile;
-    }
-
-    try {
-      const result = await this.neynar.fetchBulkUsers({ fids: [fid] });
-      if (!result.users || result.users.length < 1) {
-        elizaLogger.error('Error fetching user by fid');
-        throw new Error('Profile fetch failed');
-      }
-
-      const neynarUserProfile = result.users[0];
-
-      const profile: Profile = {
-        fid,
-        name: '',
-        username: '',
-      };
-
-      profile.name = neynarUserProfile.display_name!;
-      profile.username = neynarUserProfile.username;
-      profile.bio = neynarUserProfile.profile.bio.text;
-      profile.pfp = neynarUserProfile.pfp_url;
-
-      profileCache.set(fid, profile);
-
-      return profile;
-    } catch (error) {
-      elizaLogger.error(`Error fetching profile: ${JSON.stringify(error)}`);
-      throw error;
-    }
+    return this.profileFetcher.getProfile(fid);
   }
 
   async getTimeline(request: FidRequest): Promise<{

@@ -11,13 +11,16 @@ export type Profile = {
   pfp?: string;
   bio?: string;
   url?: string;
+  score?: number;
 };
+
+export type CastType = 'mention' | 'reply' | 'channel' | 'user' | 'other';
 
 export type Cast = {
   hash: string;
   authorFid: number;
+  username: string;
   text: string;
-  profile: Profile;
   threadId?: string;
   inReplyTo?: {
     hash: string;
@@ -29,6 +32,7 @@ export type Cast = {
     replies: number;
     likes: number;
   };
+  type: CastType;
 };
 
 export type CastId = {
