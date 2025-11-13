@@ -5,7 +5,7 @@ import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
 import { FarcasterMessageService } from './services/MessageService';
 import { FarcasterCastService } from './services/CastService';
 import { SpamFilterManager } from './managers/spamFilterManager';
-import { FarcasterStreamService } from './services/stream-service';
+import { FarcasterStreamService } from './services/StreamService';
 
 export class FarcasterService extends Service {
   private static instance?: FarcasterService;

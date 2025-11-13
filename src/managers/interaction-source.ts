@@ -4,13 +4,15 @@ import type { FarcasterConfig } from '../common/types';
 import type { IInteractionProcessor } from './interaction-processor';
 import { neynarCastToCast, castUuid } from '../common/utils';
 
+import { FarcasterStreamService } from '../services/StreamService';
+import { Cast, FarcasterEventTypes } from '../common/types';
+
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
   runtime: IAgentRuntime;
   config: FarcasterConfig;
   processor: IInteractionProcessor;
 }
-
 
 /**
  * Abstract base class for Farcaster interaction sources
@@ -138,5 +140,40 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
     } catch (error) {
       logger.error('[Farcaster] Error processing webhook data:', error instanceof Error ? error.message : String(error));
     }
-  }
+  } 
+}
+
+export class FarcasterStreamSource extends FarcasterInteractionSource {
+    private streamService: FarcasterStreamService | undefined;
+    private streamCastHandler = (cast: Cast) => {
+        console.dir(cast)
+    };
+
+    async start(): Promise<void> {
+        logger.info('Starting Farcaster stream mode');
+        if (this.isRunning) {
+            return;
+        }
+        this.isRunning = true;
+
+        this.streamService = FarcasterStreamService.getInstance({
+            config: this.config,
+            client: this.client,
+            runtime: this.runtime,
+        });
+        this.streamService.start();
+        this.streamService.on(
+          FarcasterEventTypes.STREAM_CAST_RECEIVED, 
+          this.streamCastHandler);
+    }
+
+    async stop(): Promise<void> {
+        logger.info('Stopping Farcaster stream mode');
+        if (this.isRunning && this.streamService) {
+            this.streamService.removeListener(
+              FarcasterEventTypes.STREAM_CAST_RECEIVED, 
+              this.streamCastHandler);
+        }
+        this.isRunning = false;
+    }
 }

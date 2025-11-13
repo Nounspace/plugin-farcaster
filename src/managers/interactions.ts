@@ -1,12 +1,12 @@
 import {
+  type IAgentRuntime,
+  type Memory,
   ChannelType,
   composePrompt,
   Content,
   createUniqueUuid,
   EventType,
-  type IAgentRuntime,
   logger,
-  type Memory,
   MessagePayload,
   ModelType,
   UUID,
@@ -30,8 +30,8 @@ import {
   FarcasterInteractionSource,
   FarcasterPollingSource,
   FarcasterWebhookSource,
+  FarcasterStreamSource,
 } from './interaction-source';
-import { FarcasterStreamSource } from './stream-interaction-source';
 import type { IInteractionProcessor } from './interaction-processor';
 import { SpamFilterManager } from './spamFilterManager';
 import { shouldRespondSecurityTemplate } from '../common/prompts/spam';
@@ -49,15 +49,13 @@ interface FarcasterInteractionSourceParams {
 export function createFarcasterInteractionSource(
   params: FarcasterInteractionSourceParams
 ): FarcasterInteractionSource {
-  const mode = params.config.FARCASTER_MODE;
-
-  switch (mode) {
+  switch (params.config.FARCASTER_MODE) {
     case 'webhook':
       return new FarcasterWebhookSource(params);
     case 'stream':
       if (!params.config.FARCASTER_HUB_RPC) {
-        logger.warn('FARCASTER_HUB_RPC is not set for stream mode. Falling back to polling mode.');
         logger.error('FARCASTER_HUB_RPC is required for stream mode.');
+        logger.warn('FARCASTER_HUB_RPC is not set for stream mode. Falling back to polling mode.');
         return new FarcasterPollingSource(params);
       }
       return new FarcasterStreamSource(params);
@@ -86,7 +84,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
   private spamFilter?: SpamFilterManager;
   
   // Mode and source management
-  public readonly mode: 'polling' | 'webhook';
+  public readonly mode: 'polling' | 'webhook' | "stream";
   public readonly source: FarcasterInteractionSource;
 
   constructor(opts: FarcasterInteractionManagerParams) {
@@ -97,7 +95,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     this.spamFilter = opts.spamFilter;
     
     // Initialize mode and source
-    this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
+    this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook' | "stream";
     this.source = createFarcasterInteractionSource({
       client: this.client,
       runtime: this.runtime,
@@ -220,9 +218,9 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         await this.runtime.ensureConnection({
           entityId,
           roomId,
-          worldName: `${cast.profile.username}'s Farcaster`,
-          userName: cast.profile.username,
-          name: cast.profile.name,
+          worldName: `${cast.username}'s Farcaster`,
+          userName: cast.username,
+          name: cast.username,
           source: FARCASTER_SOURCE,
           type: ChannelType.THREAD,
           channelId: conversationId,
@@ -231,9 +229,9 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
           metadata: {
             ownership: { ownerId: cast.authorFid.toString() },
             farcaster: {
-              username: cast.profile.username,
+              username: cast.username,
               id: cast.authorFid.toString(),
-              name: cast.profile.name,
+              name: cast.username,
             },
           },
         });
@@ -252,7 +250,6 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         },
         entityId,
         roomId,
-        createdAt: cast.timestamp.getTime(),
       };
 
       return memory;
@@ -311,7 +308,8 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     cast: NeynarCast;
     mention: Cast;
   }): Promise<void> {
-    if (mention.profile.fid === agent.fid) {
+    
+    if (mention.authorFid === agent.fid) {
       logger.info('skipping cast from bot itself', mention.hash);
       return;
     }
@@ -335,7 +333,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const formattedConversation = thread
       .map((c) =>
         `
-        - @${c.profile.username} (${formatCastTimestamp(c.timestamp)}):
+        - @${c.username} (${c.timestamp}):
           ${c.text}`.trim()
       )
       .join('\n\n');
@@ -352,7 +350,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     // Spam filter check
     if (this.config.SPAM_FILTER_ENABLED && this.spamFilter) {
       if (this.spamFilter.isUserBlocked(memory.entityId)) {
-        logger.warn(`User ${mention.profile.username} is blocked. Ignoring mention.`);
+        logger.warn(`User ${mention.username} is blocked. Ignoring mention.`);
         return;
       }
 
@@ -362,8 +360,8 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const spamAction = (spamResponse.match(/(?:CONTINUE|STOP)/g) || ['RESPOND'])[0];
 
       if (spamAction === 'STOP') {
-        logger.warn(`Spam filter triggered for user ${mention.profile.username}. Adding to blocklist.`);
-        this.spamFilter.addUserToBlockList(mention.profile.username, memory.entityId);
+        logger.warn(`Spam filter triggered for user ${mention.username}. Adding to blocklist.`);
+        this.spamFilter.addUserToBlockList(mention.username, memory.entityId);
         return;
       }
     }
