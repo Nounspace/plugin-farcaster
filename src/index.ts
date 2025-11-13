@@ -25,7 +25,7 @@ const farcasterPlugin = {
           return;
         }
 
-        const config = manager.interactions.config;
+        const config = manager.interactions.getInteractionConfig();
         const agentFid = config.FARCASTER_FID;
         const isMention = cast.mentioned_profiles?.some((p: any) => p.fid === agentFid);
         const isReply = cast.parent_author?.fid === agentFid;

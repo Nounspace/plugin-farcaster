@@ -61,6 +61,7 @@ export class FarcasterService extends Service {
       service.streamService = FarcasterStreamService.getInstance({
         config: farcasterConfig,
         client: client,
+        runtime: runtime,
       });
       service.streamService.start();
     }

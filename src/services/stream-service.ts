@@ -1,4 +1,6 @@
-import { logger } from '@elizaos/core';
+import { elizaLogger, IAgentRuntime, logger, MemoryType } from '@elizaos/core';
+import type { MemoryScope } from "@elizaos/core";
+
 import {
     HubEvent,
     HubEventType,
@@ -17,19 +19,10 @@ import GraphemeSplitter from 'grapheme-splitter';
 import { FarcasterClient } from '../client';
 import { FarcasterConfig, Cast, Profile } from '../common/types';
 
-var latestEventId: number = 0;
-// TODO: Move to a common place
-const saveLatestEventId = async (id: number) => {
-    latestEventId = id;
-};
-
-const getLatestEvent = async (): Promise<number | undefined> => {
-    return latestEventId;
-};
-
 interface FarcasterStreamServiceParams {
     config: FarcasterConfig;
     client: FarcasterClient;
+    runtime: IAgentRuntime;
 }
 
 export class FarcasterStreamService extends EventEmitter {
@@ -39,15 +32,17 @@ export class FarcasterStreamService extends EventEmitter {
     private isReconnecting: boolean = false;
     private reconnectTimeout: NodeJS.Timeout | null = null;
     private currentStream: any = null;
-    private isRunning: boolean = false;
+    private isRunning: boolean = false;    
 
     private config: FarcasterConfig;
     private client: FarcasterClient;
+    private runtime: IAgentRuntime;
 
     private constructor(params: FarcasterStreamServiceParams) {
         super();
         this.config = params.config;
         this.client = params.client;
+        this.runtime = params.runtime;
     }
 
     public static getInstance(params: FarcasterStreamServiceParams): FarcasterStreamService {
@@ -74,7 +69,7 @@ export class FarcasterStreamService extends EventEmitter {
         };
 
         this.hubClient = getSSLHubRpcClient(hubRpc, hubClientOptions);
-        const lastId = await getLatestEvent();
+        const lastId = await this.getStreamLatestEventBlock();
         this.subscriberStream(lastId);
     }
 
@@ -120,7 +115,7 @@ export class FarcasterStreamService extends EventEmitter {
                         stream.destroy();
                         return;
                     }
-                    await saveLatestEventId(e.id);
+                    await this.saveStreamLatestEventBlock(e.id);
                     this.handleEvent(e);
                 });
 
@@ -147,7 +142,7 @@ export class FarcasterStreamService extends EventEmitter {
                 });
             },
             (e) => {
-                logger.error('Farcaster: Error streaming data. ID: ' + getLatestEvent());
+                logger.error('Farcaster: Error streaming data. ID: ' + this.getStreamLatestEventBlock());
             }
         );
     }
@@ -170,7 +165,7 @@ export class FarcasterStreamService extends EventEmitter {
 
     private async handleStreamError(error: Error): Promise<void> {
         logger.error({
-            eventId: await getLatestEvent(),
+            eventId: await this.getStreamLatestEventBlock(),
             name: error.name,
             message: error.message,
             stack: error.stack,
@@ -190,7 +185,7 @@ export class FarcasterStreamService extends EventEmitter {
         logger.info('Attempting to reconnect to Farcaster Hub in 3 seconds...');
         this.reconnectTimeout = setTimeout(async () => {
             this.isReconnecting = false;
-            const latestEvent = await getLatestEvent();
+            const latestEvent = await this.getStreamLatestEventBlock();
             this.subscriberStream(latestEvent);
         }, 3000);
     }
@@ -254,7 +249,6 @@ export class FarcasterStreamService extends EventEmitter {
                 const cast = await this.createCastObj(msg, userProfile);
                 if (cast) {
                     this.emit('cast', cast);
-                    console.log(cast)
                 }
             } catch (error: any) {
                 logger.error(`Error fetching profile for FID ${authorFid}:`, error);
@@ -326,5 +320,61 @@ export class FarcasterStreamService extends EventEmitter {
         }
         return graphemes.join('');
     }
+
+    private StreamlatestEventBlock: number | null = null;
+
+    private saveStreamLatestEventBlock = async (blockId: number) => {
+        this.StreamlatestEventBlock = blockId;
+
+        // const memory = {
+        //     agentId: this.runtime.agentId,
+        //     entityId: this.runtime.agentId,
+        //     roomId: this.runtime.agentId,
+        //     content: {
+        //         text: `Farcaster Latest Processed Block: ${blockId}`,
+        //         metadata: { blockId },
+        //         source: 'stream-service',
+        //     },
+        //     metadata: {
+        //         type: MemoryType.CUSTOM,
+        //         scope: 'shared' as MemoryScope,
+        //         source: 'stream-service',
+        //         timestamp: Date.now(),
+        //         tags: ['stream', 'latestBlock'],
+        //     },
+        //     createdAt: Date.now(),
+        //     unique: true,
+        // };
+
+        // await this.runtime.createMemory(memory, 'memories');
+        // elizaLogger.warn(`✅ Saved Farcaster stream latest block ${blockId}`);
+    };
+
+    private getStreamLatestEventBlock = async (): Promise<number> => {
+        if (this.StreamlatestEventBlock !== null) {
+            elizaLogger.warn(`✅ Loaded Farcaster stream latest block from this.StreamlatestEventBlock`);
+            return this.StreamlatestEventBlock;
+        }
+
+        // const results = await this.runtime.searchMemories({
+        //     embedding: [],
+        //     tableName: 'memories',
+        //     query: `WHERE metadata->>'source' = 'stream-service' 
+        //             AND 'stream' = ANY(metadata->'tags') 
+        //             ORDER BY created_at DESC 
+        //             LIMIT 1`,
+        //     });
+
+        // elizaLogger.warn(JSON.stringify(results), "Stream Search Query results:");
+
+        // if (results.length > 0) {
+        //     const metadata = results[0].content.metadata as { blockId?: number };
+        //     elizaLogger.warn(`${metadata.blockId}`,"metadata.blockId}" );
+        //     return metadata.blockId ?? 0;
+        // }
+
+        return 0;
+    };
+
 }
 

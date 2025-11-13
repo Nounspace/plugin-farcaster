@@ -115,7 +115,7 @@ export const sendCastAction: Action = {
 
       return true;
     } catch (error) {
-      logger.error('[SEND_CAST] Error posting cast:', error);
+      logger.error("SEND_CAST", 'Error posting cast:', error);
       // Re-throw the error so it's visible in the agent's logs
       throw error;
     }

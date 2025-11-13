@@ -23,6 +23,7 @@ export class FarcasterStreamSource extends FarcasterInteractionSource {
         this.streamService = FarcasterStreamService.getInstance({
             config: this.config,
             client: this.client,
+            runtime: this.runtime,
         });
         this.streamService.start();
         this.streamService.on('cast', this.castHandler);

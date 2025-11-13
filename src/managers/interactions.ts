@@ -445,4 +445,8 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     await this.source.stop();
   }
 
+  public getInteractionConfig():FarcasterConfig {
+    return this.config;
+  }
+
 }
