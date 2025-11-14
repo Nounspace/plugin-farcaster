@@ -16,32 +16,56 @@ import {
 type CustomTargetsArray = FarcasterConfig['FARCASTER_CUSTOM_TARGETS']; 
 type CustomTargetConfig = NonNullable<CustomTargetsArray>[number];
 
-function extractConversationDetails(conversation: Conversation): { historyConversation: string, imageUrls: string } {
-    if (!conversation || !conversation.cast) {
-        return { historyConversation: "", imageUrls: "" };
+function extractConversationDetails(data: Conversation): { historyConversation: string, imageUrls: string } {
+    const conversation = data.conversation.cast;
+    const chronological_parent_casts = data.conversation.chronological_parent_casts;
+
+    // Extract conversation details
+    const conversationText = conversation.text.split('\n').slice(0, -3).join('\n');;
+    const conversationUsername = conversation.author.username;
+    const conversationParentFid = conversation.parent_author?.fid;
+
+    // Filter and map matching chronological parent casts
+    let parentCasts: string[] = []
+    if (chronological_parent_casts) {
+        parentCasts = chronological_parent_casts
+            .filter(cast => cast.author && cast.author?.fid === conversationParentFid)
+            .map(cast => `@${cast.author.username}: ${cast.text}`);
     }
 
-    let history = "";
+    // IMAGE PROCESSING REMOVED FROM NOW... KEEP FOR REFERENCE
+    // let imageUrls: string[] = [];
+    // try {
+    //     const allImageUrls = chronological_parent_casts
+    //         .filter(cast => cast.author?.fid === conversationParentFid)
+    //         .flatMap(cast =>
+    //             (cast.embeds || []).filter(embed =>
+    //                 embed.metadata?.content_type?.includes("image")
+    //             )
+    //         )
+    //         .map(embed => embed.url);
 
-    function traverse(cast: NeynarCast, depth = 0) {
-        const prefix = "  ".repeat(depth);
-        history += `${prefix}@${cast.author.username}: ${cast.text}\n`;
-        
-        // Image processing logic removed as per user request
+    //     imageUrls = await this.filterImageUrls(allImageUrls);
+    // } catch (error) {
+    //     elizaLogger.error("Farcaster: Error extracting image URLs");
+    //     elizaLogger.error(error);
+    // }
 
-        if (cast.direct_replies) {
-            for (const reply of cast.direct_replies) {
-                traverse(reply, depth + 1);
-            }
-        }
-    }
+    // elizaLogger.log(imageUrls);
 
-    traverse(conversation.cast);
+    // Add the conversation details
+    const conversationDetail = `@${conversationUsername}: ${conversationText}`;
+
+    // Combine parent casts and the conversation detail
+    const formattedDetails = [...parentCasts, conversationDetail];
+
+    // Join the formatted details with a newline character
+    // return formattedDetails.join('\n');
 
     return {
-        historyConversation: history,
-        imageUrls: "", // Always return empty string for imageUrls
-    };
+        historyConversation: formattedDetails.join('\n'),
+        imageUrls: ""
+    }
 }
 
 export async function handleCustomTargetUserCast(
@@ -140,7 +164,7 @@ export async function handleCustomTargetUserCast(
   let historyConversation = "";
   let imageUrls = "";
   try {
-      const castConversation: Conversation = await client.neynar.lookupCastConversation({
+      const castConversation = await client.neynar.lookupCastConversation({
           identifier: cast.hash,
           type: 'hash',
           replyDepth: 2,
@@ -157,6 +181,10 @@ export async function handleCustomTargetUserCast(
   } catch (error) {
       logger.error("Farcaster", "Error fetching conversation", error);
   }
+
+  logger.warn("DEBUG", "---:", historyConversation)
+  logger.warn("DEBUG", "history conversation:", historyConversation)
+  logger.warn("DEBUG", "---:", historyConversation)
 
   // 5. Build prompt
   const promptTemplate = runtime.character.templates?.[targetConfig.promptTemplateKey] || defaultTargetUserPrompt;

@@ -22,11 +22,15 @@ describe('handleCustomTargetUserCast', () => {
       }),
       neynar: {
         lookupCastConversation: vi.fn().mockResolvedValue({
-          cast: {
-            hash: '0x123',
-            author: { username: 'testuser' },
-            text: 'hello world',
-            direct_replies: [],
+          conversation: {
+            cast: {
+              hash: '0x123',
+              author: { username: 'testuser' },
+              text: 'hello world',
+              direct_replies: [],
+              parent_author: { fid: 123 },
+            },
+            chronological_parent_casts: [],
           },
         }),
       },
@@ -60,7 +64,7 @@ describe('handleCustomTargetUserCast', () => {
 
     expect(mockRuntime.useModel).toHaveBeenCalledWith(
       ModelType.LARGE,
-      { prompt: 'test prompt with @testuser: hello world\n' },
+      { prompt: 'test prompt with @testuser: ' },
       'groq'
     );
   });
