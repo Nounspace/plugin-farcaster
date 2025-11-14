@@ -356,6 +356,7 @@ export class FarcasterStreamService extends EventEmitter {
         const inReplyTo = castAddBody.parentCastId ? {
             hash: this.bytesToHex(castAddBody.parentCastId.hash),
             fid: castAddBody.parentCastId.fid,
+            username: await this.getUsernameFromFid(castAddBody.parentCastId.fid),
         } : undefined;
 
         const cast = {

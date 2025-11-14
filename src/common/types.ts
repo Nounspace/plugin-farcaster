@@ -25,6 +25,7 @@ export type Cast = {
   inReplyTo?: {
     hash: string;
     fid: number;
+    username?: string;
   };
   timestamp: Date;
   stats?: {
@@ -38,6 +39,7 @@ export type Cast = {
 export type CastId = {
   hash: string;
   fid: number;
+  username?: string;
 };
 
 export type FidRequest = {
@@ -97,6 +99,10 @@ export const FarcasterConfigSchema = z.object({
     .default(true)
     .transform((val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val)),
   SPAM_FILTER_PROMPT: z.string().optional(),
+  SPAM_WHITE_LIST_USERS: z.preprocess(
+    (val) => (typeof val === 'string' ? val.split(',').map(u => u.trim()).filter(Boolean) : []),
+    z.array(z.string()).optional()
+  ),
 });
 
 export type FarcasterConfig = z.infer<typeof FarcasterConfigSchema>;

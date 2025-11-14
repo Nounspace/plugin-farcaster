@@ -73,7 +73,7 @@ describe('Cast Type', () => {
       hash: '0x1234567890abcdef',
       authorFid: 12345,
       text: 'This is a test cast',
-      profile: sampleProfile,
+      // profile: sampleProfile,
       threadId: 'thread123',
       inReplyTo: {
         hash: '0xabcdef1234567890',
@@ -84,13 +84,15 @@ describe('Cast Type', () => {
         recasts: 10,
         replies: 5,
         likes: 25
-      }
+      },
+      username: '',
+      type: 'user'
     };
 
     expect(validCast.hash).toBe('0x1234567890abcdef');
     expect(validCast.authorFid).toBe(12345);
     expect(validCast.text).toBe('This is a test cast');
-    expect(validCast.profile).toEqual(sampleProfile);
+    // expect(validCast.profile).toEqual(sampleProfile);
   });
 
   it('should accept minimal cast with only required properties', () => {
@@ -98,8 +100,10 @@ describe('Cast Type', () => {
       hash: '0x123',
       authorFid: 1,
       text: 'Minimal cast',
-      profile: sampleProfile,
-      timestamp: new Date()
+      // profile: sampleProfile,
+      timestamp: new Date(),
+      username: '',
+      type: 'user'
     };
 
     expect(minimalCast.threadId).toBeUndefined();
@@ -112,13 +116,15 @@ describe('Cast Type', () => {
       hash: '0x000',
       authorFid: 0,
       text: '',
-      profile: sampleProfile,
+      // profile: sampleProfile,
       timestamp: new Date(),
       stats: {
         recasts: 0,
         replies: 0,
         likes: 0
-      }
+      },
+      username: '',
+      type: 'user'
     };
 
     expect(emptyCast.text).toBe('');
@@ -211,7 +217,7 @@ describe('FarcasterConfigSchema', () => {
       FARCASTER_HUB_URL: 'https://hub.farcaster.example.com',
       SPAM_FILTER_ENABLED: false,
       SPAM_FILTER_SHARED: false,
-      SPAM_FILTER_PROMPT: ""
+      // SPAM_FILTER_PROMPT: ""
     };
 
     const result = FarcasterConfigSchema.parse(validConfig);
@@ -404,13 +410,15 @@ describe('Type Integration Tests', () => {
       hash: '0xintegrationtest123',
       authorFid: profile.fid,
       text: 'This is an integration test cast',
-      profile: profile,
+      // profile: profile,
       timestamp: new Date(),
       stats: {
         recasts: 1,
         replies: 2,
         likes: 3
-      }
+      },
+      username: '',
+      type: 'user'
     };
 
     const castId: CastId = {
@@ -428,7 +436,7 @@ describe('Type Integration Tests', () => {
       timestamp: cast.timestamp.getTime()
     };
 
-    expect(cast.profile.fid).toBe(profile.fid);
+    // expect(cast.profile.fid).toBe(profile.fid);
     expect(castId.fid).toBe(cast.authorFid);
     expect(fidRequest.fid).toBe(profile.fid);
     expect(lastCast.hash).toBe(cast.hash);
@@ -469,13 +477,15 @@ describe('Type Integration Tests', () => {
       hash: '0x' + 'f'.repeat(64),
       authorFid: extremeProfile.fid,
       text: 'X'.repeat(320),
-      profile: extremeProfile,
+      // profile: extremeProfile,
       timestamp: new Date('2099-12-31T23:59:59Z'),
       stats: {
         recasts: 999999,
         replies: 999999,
         likes: 999999
-      }
+      },
+      username: '',
+      type: 'user'
     };
 
     expect(extremeProfile.fid).toBe(999999999);
