@@ -34,6 +34,7 @@ export type Cast = {
     likes: number;
   };
   type: CastType;
+  embeds?: string[];
 };
 
 export type CastId = {
@@ -111,11 +112,24 @@ export const FarcasterConfigSchema = z.object({
   ),
 
   // Custom target user settings
-  FARCASTER_CUSTOM_TARGET_USERS: z.preprocess(
-    (val) => (typeof val === 'string' ? val.split(',').map(u => u.trim()).filter(Boolean) : val),
-    z.array(z.coerce.number()).optional()
-  ),
   MIN_NEYNAR_SCORE: z.coerce.number().optional().default(0.7),
+  FARCASTER_CUSTOM_TARGETS: z.array(z.object({
+    fid: z.number(),
+    trigger: z.object({
+      username: z.string().optional(),
+      textContains: z.string().optional(),
+      embedsContains: z.string().optional(),
+    }),
+    replyTo: z.enum(['parent', 'self']).default('self'),
+    promptTemplateKey: z.string(),
+    replySuffix: z.string().optional(),
+    attachmentUrlTemplate: z.string().optional(),
+    extractions: z.array(z.object({
+      name: z.string(),
+      regex: z.string(),
+      source: z.enum(['text', 'embeds']).optional(),
+    })),
+  })).optional(),
 });
 
 export type FarcasterConfig = z.infer<typeof FarcasterConfigSchema>;

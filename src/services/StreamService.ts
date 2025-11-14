@@ -256,44 +256,47 @@ export class FarcasterStreamService extends EventEmitter {
         }
 
         const targetUsers = this.config.FARCASTER_TARGET_USERS || [];
-        const isFromTargetUser = targetUsers.includes(authorFid);
+        const customTargetFids = (this.config.FARCASTER_CUSTOM_TARGETS || []).map(t => t.fid);
+        const allTargetFids = Array.from(new Set([...targetUsers, ...customTargetFids]));
+        const isFromTargetUser = allTargetFids.includes(authorFid);
 
 
 
         let castType: CastType = 'other';
         if (isMention) {
             castType = 'mention';
-            logger.debug("Farcaster", "Is Mention", castAddBody.mentions)
+            logger.warn("Farcaster:", "Is Mention", castAddBody.mentions)
         } else if (isReply) {
             castType = 'reply';
-            logger.debug("Farcaster", "Is Reply", castAddBody.parentCastId?.fid)
+            logger.warn("Farcaster:", "Is Reply", castAddBody.parentCastId?.fid)
         } else if (isFromTargetChannel) {
             castType = 'channel';
-            logger.debug("Farcaster", "Is channel", castAddBody.parentUrl)
+            logger.warn("Farcaster:", "Is from Channel", castAddBody.parentUrl)
         } else if (isFromTargetUser) {
             castType = 'user';
-            logger.debug("Farcaster", "Is isFromTargetUser", targetUsers)
+            logger.warn("Farcaster:", "Is From Targe tUser", targetUsers)
         }
 
         if (castType == 'other') {
-            const now = Date.now();
-            if (now - this.lastDebugLogTime > 60000) { // 60000 ms = 1 minute
-                this.lastDebugLogTime = now;
-                logger.warn("\nStream", "Debug (throttled)", msg.data.castAddBody?.text);
-                logger.warn('targetUsers: ', `For agent fid: ${agentFid}`, targetUsers);
-                logger.warn(`Mentions: `, "", castAddBody.mentions);
-                logger.warn(`Channel: `, "", castAddBody.parentUrl);
-                logger.warn("\n", "----\n");
-            }
+            // const now = Date.now();
+            // if (now - this.lastDebugLogTime > 60000) { // 60000 ms = 1 minute
+            //     this.lastDebugLogTime = now;
+            //     logger.debug("\nStream", "Debug (throttled)", msg.data.castAddBody?.text);
+            //     logger.debug('targetUsers: ', `For agent fid: ${agentFid}`, targetUsers);
+            //     logger.debug(`Mentions: `, "", castAddBody.mentions);
+            //     logger.debug(`Channel: `, "", castAddBody.parentUrl);
+            //     logger.debug("\n", "----\n");
+            // }
             return
         }
         
         try {
             const cast = await this.createCastObj(msg, castType);
             if (cast) {
+                this.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, cast);
+
                 // const neynarCast = await this.castToNeynarCast(cast)
-                // this.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, cast);
-                console.dir(cast)
+                // console.dir(cast)
             }
         } catch (error: any) {
             logger.error(`Error processing cast in handleAddCast for FID ${authorFid}:`, error);
@@ -383,6 +386,8 @@ export class FarcasterStreamService extends EventEmitter {
             username: await this.getUsernameFromFid(castAddBody.parentCastId.fid),
         } : undefined;
 
+        const embeds = castAddBody.embeds.map(embed => embed.url).filter((url): url is string => !!url);
+
         const cast = {
             hash,
             authorFid: message.data.fid,
@@ -391,6 +396,7 @@ export class FarcasterStreamService extends EventEmitter {
             inReplyTo,
             timestamp: farcasterTimeToDate(message.data.timestamp),
             type,
+            embeds,
         };
 
         return cast;

@@ -25,6 +25,7 @@ import {
   FarcasterGenericCastPayload,
   type Profile,
 } from '../common/types';
+import { defaultTargetUserPrompt } from '../common/prompts/targetUserPrompt';
 import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
 import {
   FarcasterInteractionSource,
@@ -35,6 +36,9 @@ import {
 import type { IInteractionProcessor } from './interaction-processor';
 import { SpamFilterManager } from './spamFilterManager';
 import { shouldRespondSecurityTemplate } from '../common/prompts/spam';
+
+type CustomTargetsArray = FarcasterConfig['FARCASTER_CUSTOM_TARGETS']; 
+type CustomTargetConfig = NonNullable<CustomTargetsArray>[number];
 
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
@@ -131,112 +135,168 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
   async processStreamedCast(cast: Cast): Promise<void> {
     logger.info(`Processing streamed cast: ${cast.hash}`);
-    const customTargets = this.config.FARCASTER_CUSTOM_TARGET_USERS || [];
-    if (customTargets.includes(cast.authorFid)) {
-      await this.handleCustomTargetUserCast(cast);
+    const customTargets = this.config.FARCASTER_CUSTOM_TARGETS || [];
+    const targetConfig = customTargets.find(t => t.fid === cast.authorFid);
+
+    if (targetConfig) {
+      await this.handleCustomTargetUserCast(cast, targetConfig);
     } else {
       await this.handleStreamedMentionCast(cast);
     }
   }
 
-  private async handleCustomTargetUserCast(cast: Cast): Promise<void> {
-    logger.info(`Handling custom target user cast from @${cast.username}`);
+  private async handleCustomTargetUserCast(cast: Cast, targetConfig: CustomTargetConfig): Promise<void> {
+    // 1. Check trigger conditions
+    const trigger = targetConfig.trigger;
 
-    // 1. Identify deploy event (hardcoded for clanker for now)
-    if (!(cast.username === 'clanker' && cast.text.includes('clanker.world'))) {
-      logger.debug('Not a clanker deploy event.');
-      return;
+    // Check username first (if specified)
+    if (trigger.username && cast.username !== trigger.username) {
+        logger.debug(`Cast from @${cast.username} does not match trigger username @${trigger.username}`);
+        return;
     }
 
-    // 2. Extract contract address
-    const contractAddressMatch = cast.text.match(/0x[a-fA-F0-9]{40}/);
-    const contractAddress = contractAddressMatch ? contractAddressMatch[0] : null;
-    if (!contractAddress) {
-      logger.debug('Could not extract contract address from clanker cast.');
-      return;
+    // Check for content match in text or embeds
+    let contentTriggerMet = false;
+    const hasTextTrigger = !!trigger.textContains;
+    const hasEmbedsTrigger = !!trigger.embedsContains;
+
+    // If no content triggers are defined, a username match is enough.
+    if (!hasTextTrigger && !hasEmbedsTrigger) {
+        contentTriggerMet = true;
+    } else {
+        // Check text
+        if (hasTextTrigger && cast.text.includes(trigger.textContains!)) {
+            contentTriggerMet = true;
+        }
+        // If not found in text, check embeds
+        if (!contentTriggerMet && hasEmbedsTrigger && cast.embeds) {
+            if (cast.embeds.some(url => url.includes(trigger.embedsContains!))) {
+                contentTriggerMet = true;
+            }
+        }
     }
 
-    // 3. Get parent user FID
-    const parentFid = cast.inReplyTo?.fid;
-    if (!parentFid) {
-      logger.debug('Clanker cast is not a reply, cannot find parent user.');
-      return;
+    if (!contentTriggerMet) {
+        logger.debug(`Cast from @${cast.username} did not meet content trigger conditions.`);
+        return;
     }
 
-    // 4. Fetch parent user info and check score
-    const deployerInfo = await this.client.getProfile(parentFid);
-    if (!deployerInfo) {
-      logger.warn(`Could not fetch profile for deployer FID ${parentFid}`);
-      return;
+    logger.info(`Handling custom target user cast from @${cast.username} based on config.`);
+
+    // 2. Perform extractions
+    const extractedData: { [key: string]: string } = {};
+    for (const extraction of targetConfig.extractions) {
+        if (extractedData[extraction.name]) continue; // Already found this data point
+
+        try {
+            const regex = new RegExp(extraction.regex);
+            const source = extraction.source || 'text'; // Default to text
+
+            if (source === 'text') {
+                const match = cast.text.match(regex);
+                if (match && match[0]) {
+                    extractedData[extraction.name] = match[0];
+                }
+            } else if (source === 'embeds' && cast.embeds) {
+                for (const embedUrl of cast.embeds) {
+                    const match = embedUrl.match(regex);
+                    if (match && match[0]) {
+                        extractedData[extraction.name] = match[0];
+                        break; // Found it in one of the embeds, move to next extraction rule
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error("Farcaster", `Error executing regex for extraction '${extraction.name}':`, error);
+        }
     }
 
-    const score = deployerInfo.score ?? 0;
+    // 3. Identify original user
+    const originalUserFid = cast.inReplyTo?.fid;
+    if (!originalUserFid) {
+        logger.warn('Custom target cast is not a reply, cannot find original user.');
+        return;
+    }
+
+    // 4. Fetch original user info and check score
+    const originalUserInfo = await this.client.getProfile(originalUserFid);
+    if (!originalUserInfo) {
+        logger.warn(`Could not fetch profile for original user FID ${originalUserFid}`);
+        return;
+    }
+
+    const score = originalUserInfo.score ?? 0;
     if (score < this.config.MIN_NEYNAR_SCORE) {
-      logger.info(`Deployer @${deployerInfo.username} has low score (${score}), ignoring.`);
-      return;
+        logger.info(`Original user @${originalUserInfo.username} has low score (${score}), ignoring.`);
+        return;
     }
 
-    // 5. Spam check
-    const deployerEntityId = createUniqueUuid(this.runtime, deployerInfo.fid.toString());
-    if (this.spamFilter?.isUserBlocked(deployerEntityId)) {
-      logger.warn(`Deployer @${deployerInfo.username} is on the blocklist, ignoring.`);
-      return;
-    }
+    // 5. Build prompt
+    const promptTemplate = this.runtime.character.templates?.[targetConfig.promptTemplateKey] || defaultTargetUserPrompt;
+    
+    const state = {
+        ...extractedData,
+        originalUsername: originalUserInfo.username,
+        originalUserBio: originalUserInfo.bio || 'No bio provided.',
+    };
 
-    // 6. Build context for LLM
-    const nounspacePage = `https://nounspace.com/t/base/${contractAddress}`;
-    const prompt = `
-Roleplay as Tom from "nounspace" and generate a personalized, engaging, and casual message that's snappy, concise, and a maximum of 3 sentences without any introduction, decision-making context or explanations, just responde with the message.
+    const prompt = composePrompt({ state, template: promptTemplate });
 
-REMEMBER: 
-Strictly maintain branding: 'nounspace' must always be lowercase.
-
-# Message goals:
-Be witty, creative, and inspired by the provided context which includes:
-The token's name and symbol.
-The owners's bio, name, and other provided details like about_token and image_description.
-Use puns, clever references, or wordplay. 
-Encourage action: Prompt the user to log in to "nounspace" with Farcaster to customize their token's space with Themes, Fidgets (mini apps), and Tabs.
-
-# Tips for Better Output:
-Include dynamic personalization to create a strong sense of connection.
-Maintain clarity despite the creative tone.
-No preamble, no wrap-up: Just output the final message. No "Here's your message" intro or follow-up comments.
-
-# IMPORTANT
-"nounspace" brand is always lowercase.
-Always output 'nounspace' in lowercase, never capitalized.
-Do not include any hashtags.
-Do not mention @${this.runtime.character.username}. Only mention token owner's username @${deployerInfo.username}.
-
-<about_token>
-  username: @${deployerInfo.username}
-  user bio: ${deployerInfo.bio || 'No bio provided.'}
-<about_token>
-`;
-
-    // 7. Generate reply
-    let replyText = `Hey @${deployerInfo.username}! Log into nounspace with Farcaster and customize your token space with Themes, Fidgets, and Tabs.\n\nHere's your token space: ${nounspacePage}`; // Fallback
+    // 6. Generate reply
+    let replyText: string | undefined;
     try {
-      const llmResponse = await this.runtime.useModel(ModelType.LARGE, { prompt });
-      if (llmResponse) {
-        replyText = llmResponse.replace(/^"|"$/g, '').replace(/\\n+/g, '') + `\n\nHere's your token space: ${nounspacePage}`;
-      }
+        const response = await this.runtime.useModel(ModelType.LARGE, { prompt });
+        if (typeof response === 'string') {
+            replyText = response;
+        }
     } catch (error) {
-      logger.error("Farcaster:", 'LLM call failed for custom target reply, using fallback.', error);
+        logger.error("Farcaster",'LLM call failed for custom target reply.', error);
     }
 
-    // 8. Publish reply
-    logger.info(`Replying to clanker cast ${cast.hash} with: ${replyText}`);
+    if (!replyText) {
+        logger.warn('LLM generated an empty reply for custom target.');
+        return;
+    }
+
+    // Append configurable suffix
+    if (targetConfig.replySuffix) {
+        const suffix = composePrompt({ state, template: targetConfig.replySuffix });
+        replyText += suffix;
+    }
+
+    // 7. Publish reply
+    let finalReplyToHash = cast.hash;
+    let finalReplyToFid = cast.authorFid;
+    if (targetConfig.replyTo === 'parent' && cast.inReplyTo) {
+        finalReplyToHash = cast.inReplyTo.hash;
+        finalReplyToFid = cast.inReplyTo.fid;
+    }
+
+    logger.info(`Replying to ${targetConfig.replyTo} of cast ${cast.hash} with: ${replyText}`);
 
     if (this.config.FARCASTER_DRY_RUN) {
-      logger.warn(`[DRY RUN] Would have replied with: ${replyText}`);
-      return;
+        logger.warn(`[DRY RUN] Would have replied with: ${replyText}`);
+        return;
+    }
+
+    const attachments: Content['attachments'] = [];
+    if (targetConfig.attachmentUrlTemplate) {
+        const attachmentUrl = composePrompt({ state, template: targetConfig.attachmentUrlTemplate });
+        
+        if (attachmentUrl && attachmentUrl.startsWith('http')) {
+            attachments.push({
+                id: '1',
+                url: attachmentUrl,
+            });
+        }
     }
 
     await this.client.sendCast({
-      content: { text: replyText },
-      inReplyTo: { hash: cast.hash, fid: cast.authorFid },
+        content: { 
+            text: replyText,
+            attachments: attachments,
+        },
+        inReplyTo: { hash: finalReplyToHash, fid: finalReplyToFid },
     });
   }
 
