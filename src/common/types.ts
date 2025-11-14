@@ -129,6 +129,7 @@ export const FarcasterConfigSchema = z.object({
       regex: z.string(),
       source: z.enum(['text', 'embeds']).optional(),
     })),
+    custom_provider: z.string().optional(),
   })).optional(),
 });
 

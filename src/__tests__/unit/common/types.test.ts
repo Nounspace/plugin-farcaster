@@ -322,9 +322,9 @@ describe('FarcasterEventTypes Enum', () => {
     expect(FarcasterEventTypes.THREAD_CAST_CREATED).toBe('FARCASTER_THREAD_CAST_CREATED');
   });
 
-  it('should have exactly 3 enum values', () => {
+  it('should have exactly 4 enum values', () => {
     const enumValues = Object.values(FarcasterEventTypes);
-    expect(enumValues).toHaveLength(3);
+    expect(enumValues).toHaveLength(4);
   });
 
   it('should allow valid enum assignments', () => {

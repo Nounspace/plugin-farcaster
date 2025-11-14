@@ -25,8 +25,7 @@ import {
   FarcasterGenericCastPayload,
   type Profile,
 } from '../common/types';
-import { defaultTargetUserPrompt } from '../common/prompts/targetUserPrompt';
-import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
+import { handleCustomTargetUserCast } from './custom-target-handler';
 import {
   FarcasterInteractionSource,
   FarcasterPollingSource,
@@ -36,9 +35,7 @@ import {
 import type { IInteractionProcessor } from './interaction-processor';
 import { SpamFilterManager } from './spamFilterManager';
 import { shouldRespondSecurityTemplate } from '../common/prompts/spam';
-
-type CustomTargetsArray = FarcasterConfig['FARCASTER_CUSTOM_TARGETS']; 
-type CustomTargetConfig = NonNullable<CustomTargetsArray>[number];
+import { castUuid, formatCastTimestamp, neynarCastToCast } from '../common/utils';
 
 interface FarcasterInteractionSourceParams {
   client: FarcasterClient;
@@ -139,165 +136,10 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const targetConfig = customTargets.find(t => t.fid === cast.authorFid);
 
     if (targetConfig) {
-      await this.handleCustomTargetUserCast(cast, targetConfig);
+      await handleCustomTargetUserCast(cast, targetConfig, this.runtime, this.client, this.config);
     } else {
       await this.handleStreamedMentionCast(cast);
     }
-  }
-
-  private async handleCustomTargetUserCast(cast: Cast, targetConfig: CustomTargetConfig): Promise<void> {
-    // 1. Check trigger conditions
-    const trigger = targetConfig.trigger;
-
-    // Check username first (if specified)
-    if (trigger.username && cast.username !== trigger.username) {
-        logger.debug(`Cast from @${cast.username} does not match trigger username @${trigger.username}`);
-        return;
-    }
-
-    // Check for content match in text or embeds
-    let contentTriggerMet = false;
-    const hasTextTrigger = !!trigger.textContains;
-    const hasEmbedsTrigger = !!trigger.embedsContains;
-
-    // If no content triggers are defined, a username match is enough.
-    if (!hasTextTrigger && !hasEmbedsTrigger) {
-        contentTriggerMet = true;
-    } else {
-        // Check text
-        if (hasTextTrigger && cast.text.includes(trigger.textContains!)) {
-            contentTriggerMet = true;
-        }
-        // If not found in text, check embeds
-        if (!contentTriggerMet && hasEmbedsTrigger && cast.embeds) {
-            if (cast.embeds.some(url => url.includes(trigger.embedsContains!))) {
-                contentTriggerMet = true;
-            }
-        }
-    }
-
-    if (!contentTriggerMet) {
-        logger.debug(`Cast from @${cast.username} did not meet content trigger conditions.`);
-        return;
-    }
-
-    logger.info(`Handling custom target user cast from @${cast.username} based on config.`);
-
-    // 2. Perform extractions
-    const extractedData: { [key: string]: string } = {};
-    for (const extraction of targetConfig.extractions) {
-        if (extractedData[extraction.name]) continue; // Already found this data point
-
-        try {
-            const regex = new RegExp(extraction.regex);
-            const source = extraction.source || 'text'; // Default to text
-
-            if (source === 'text') {
-                const match = cast.text.match(regex);
-                if (match && match[0]) {
-                    extractedData[extraction.name] = match[0];
-                }
-            } else if (source === 'embeds' && cast.embeds) {
-                for (const embedUrl of cast.embeds) {
-                    const match = embedUrl.match(regex);
-                    if (match && match[0]) {
-                        extractedData[extraction.name] = match[0];
-                        break; // Found it in one of the embeds, move to next extraction rule
-                    }
-                }
-            }
-        } catch (error) {
-            logger.error("Farcaster", `Error executing regex for extraction '${extraction.name}':`, error);
-        }
-    }
-
-    // 3. Identify original user
-    const originalUserFid = cast.inReplyTo?.fid;
-    if (!originalUserFid) {
-        logger.warn('Custom target cast is not a reply, cannot find original user.');
-        return;
-    }
-
-    // 4. Fetch original user info and check score
-    const originalUserInfo = await this.client.getProfile(originalUserFid);
-    if (!originalUserInfo) {
-        logger.warn(`Could not fetch profile for original user FID ${originalUserFid}`);
-        return;
-    }
-
-    const score = originalUserInfo.score ?? 0;
-    if (score < this.config.MIN_NEYNAR_SCORE) {
-        logger.info(`Original user @${originalUserInfo.username} has low score (${score}), ignoring.`);
-        return;
-    }
-
-    // 5. Build prompt
-    const promptTemplate = this.runtime.character.templates?.[targetConfig.promptTemplateKey] || defaultTargetUserPrompt;
-    
-    const state = {
-        ...extractedData,
-        originalUsername: originalUserInfo.username,
-        originalUserBio: originalUserInfo.bio || 'No bio provided.',
-    };
-
-    const prompt = composePrompt({ state, template: promptTemplate });
-
-    // 6. Generate reply
-    let replyText: string | undefined;
-    try {
-        const response = await this.runtime.useModel(ModelType.LARGE, { prompt });
-        if (typeof response === 'string') {
-            replyText = response;
-        }
-    } catch (error) {
-        logger.error("Farcaster",'LLM call failed for custom target reply.', error);
-    }
-
-    if (!replyText) {
-        logger.warn('LLM generated an empty reply for custom target.');
-        return;
-    }
-
-    // Append configurable suffix
-    if (targetConfig.replySuffix) {
-        const suffix = composePrompt({ state, template: targetConfig.replySuffix });
-        replyText += suffix;
-    }
-
-    // 7. Publish reply
-    let finalReplyToHash = cast.hash;
-    let finalReplyToFid = cast.authorFid;
-    if (targetConfig.replyTo === 'parent' && cast.inReplyTo) {
-        finalReplyToHash = cast.inReplyTo.hash;
-        finalReplyToFid = cast.inReplyTo.fid;
-    }
-
-    logger.info(`Replying to ${targetConfig.replyTo} of cast ${cast.hash} with: ${replyText}`);
-
-    if (this.config.FARCASTER_DRY_RUN) {
-        logger.warn(`[DRY RUN] Would have replied with: ${replyText}`);
-        return;
-    }
-
-    const attachments: Content['attachments'] = [];
-    if (targetConfig.attachmentUrlTemplate) {
-        const attachmentUrl = composePrompt({ state, template: targetConfig.attachmentUrlTemplate });
-        
-        if (attachmentUrl && attachmentUrl.startsWith('http')) {
-            attachments.push({
-                id: '1',
-                url: attachmentUrl,
-            });
-        }
-    }
-
-    await this.client.sendCast({
-        content: { 
-            text: replyText,
-            attachments: attachments,
-        },
-        inReplyTo: { hash: finalReplyToHash, fid: finalReplyToFid },
-    });
   }
 
   /**

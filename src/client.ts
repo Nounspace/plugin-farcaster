@@ -22,7 +22,7 @@ const profileCache: LRUCache<number, Profile> = new LRUCache({
 });
 
 export class FarcasterClient {
-  private neynar: NeynarAPIClient;
+  public neynar: NeynarAPIClient;
   private signerUuid: string;
   private profileFetcher: ProfileFetcher;
 
