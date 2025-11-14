@@ -377,26 +377,46 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
     // Spam filter check
     if (this.config.SPAM_FILTER_ENABLED && this.spamFilter) {
-      if (this.spamFilter.isUserBlocked(memory.entityId)) {
-        logger.warn(`User ${mention.username} is blocked. Ignoring mention.`);
-        return;
-      }
+      const whitelist = this.config.SPAM_WHITE_LIST_USERS || [];
+      if (whitelist.includes(mention.username)) {
+        logger.info(`User @${mention.username} is on the whitelist, skipping spam check.`);
+      } else {
+        if (this.spamFilter.isUserBlocked(memory.entityId)) {
+          logger.warn(`User ${mention.username} is blocked. Ignoring mention.`);
+          return;
+        }
 
-      const spamPrompt = this.config.SPAM_FILTER_PROMPT || shouldRespondSecurityTemplate;
-      const spamCheckPrompt = composePrompt({ state, template: spamPrompt });
-      const spamResponse = await this.runtime.useModel(ModelType.TEXT_SMALL, { prompt: spamCheckPrompt });
-      const spamAction = (spamResponse.match(/(?:CONTINUE|STOP)/g) || ['RESPOND'])[0];
+        const spamPrompt = this.config.SPAM_FILTER_PROMPT || shouldRespondSecurityTemplate;
+        const spamCheckPrompt = composePrompt({ state: state.values, template: spamPrompt });
+        const spamResponse = await this.runtime.useModel(ModelType.TEXT_SMALL, { prompt: spamCheckPrompt });
+        const spamAction = (spamResponse.match(/CONTINUE|STOP|IGNORE|BLOCK/) || ['CONTINUE'])[0] as
+          | 'CONTINUE'
+          | 'STOP'
+          | 'IGNORE'
+          | 'BLOCK';
 
-      if (spamAction === 'STOP') {
-        logger.warn(`Spam filter triggered for user ${mention.username}. Adding to blocklist.`);
-        this.spamFilter.addUserToBlockList(mention.username, memory.entityId);
-        return;
+        switch (spamAction) {
+          case 'BLOCK':
+            logger.warn(`Spam filter: BLOCK user ${mention.username}. Adding to blocklist permanently.`);
+            this.spamFilter.addUserToBlockList(mention.username, memory.entityId);
+            return;
+          case 'STOP':
+            logger.warn(`Spam filter: STOP for ${mention.username}. Dropping this message.`);
+            return;
+          case 'IGNORE':
+            logger.info(`Spam filter: IGNORE for ${mention.username}. No reply will be made.`);
+            return;
+          case 'CONTINUE':
+          default:
+            logger.debug(`Spam filter: CONTINUE for ${mention.username}. Proceeding.`);
+            break;
+        }
       }
     }
 
     // Determine if we should respond to the cast
     const shouldRespondPrompt = composePrompt({
-      state,
+      state: state.values,
       template:
         this.runtime.character.templates?.farcasterShouldRespondTemplate ||
         this.runtime.character?.templates?.shouldRespondTemplate ||

@@ -153,6 +153,10 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
       SPAM_FILTER_PROMPT:
         runtime.getSetting('SPAM_FILTER_PROMPT') ||
         process.env.SPAM_FILTER_PROMPT,
+
+      SPAM_WHITE_LIST_USERS:
+        runtime.getSetting('SPAM_WHITE_LIST_USERS') ||
+        process.env.SPAM_WHITE_LIST_USERS,
     };
 
     logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);
