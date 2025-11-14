@@ -131,7 +131,114 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
   async processStreamedCast(cast: Cast): Promise<void> {
     logger.info(`Processing streamed cast: ${cast.hash}`);
-    await this.handleStreamedMentionCast(cast);
+    const customTargets = this.config.FARCASTER_CUSTOM_TARGET_USERS || [];
+    if (customTargets.includes(cast.authorFid)) {
+      await this.handleCustomTargetUserCast(cast);
+    } else {
+      await this.handleStreamedMentionCast(cast);
+    }
+  }
+
+  private async handleCustomTargetUserCast(cast: Cast): Promise<void> {
+    logger.info(`Handling custom target user cast from @${cast.username}`);
+
+    // 1. Identify deploy event (hardcoded for clanker for now)
+    if (!(cast.username === 'clanker' && cast.text.includes('clanker.world'))) {
+      logger.debug('Not a clanker deploy event.');
+      return;
+    }
+
+    // 2. Extract contract address
+    const contractAddressMatch = cast.text.match(/0x[a-fA-F0-9]{40}/);
+    const contractAddress = contractAddressMatch ? contractAddressMatch[0] : null;
+    if (!contractAddress) {
+      logger.debug('Could not extract contract address from clanker cast.');
+      return;
+    }
+
+    // 3. Get parent user FID
+    const parentFid = cast.inReplyTo?.fid;
+    if (!parentFid) {
+      logger.debug('Clanker cast is not a reply, cannot find parent user.');
+      return;
+    }
+
+    // 4. Fetch parent user info and check score
+    const deployerInfo = await this.client.getProfile(parentFid);
+    if (!deployerInfo) {
+      logger.warn(`Could not fetch profile for deployer FID ${parentFid}`);
+      return;
+    }
+
+    const score = deployerInfo.score ?? 0;
+    if (score < this.config.MIN_NEYNAR_SCORE) {
+      logger.info(`Deployer @${deployerInfo.username} has low score (${score}), ignoring.`);
+      return;
+    }
+
+    // 5. Spam check
+    const deployerEntityId = createUniqueUuid(this.runtime, deployerInfo.fid.toString());
+    if (this.spamFilter?.isUserBlocked(deployerEntityId)) {
+      logger.warn(`Deployer @${deployerInfo.username} is on the blocklist, ignoring.`);
+      return;
+    }
+
+    // 6. Build context for LLM
+    const nounspacePage = `https://nounspace.com/t/base/${contractAddress}`;
+    const prompt = `
+Roleplay as Tom from "nounspace" and generate a personalized, engaging, and casual message that's snappy, concise, and a maximum of 3 sentences without any introduction, decision-making context or explanations, just responde with the message.
+
+REMEMBER: 
+Strictly maintain branding: 'nounspace' must always be lowercase.
+
+# Message goals:
+Be witty, creative, and inspired by the provided context which includes:
+The token's name and symbol.
+The owners's bio, name, and other provided details like about_token and image_description.
+Use puns, clever references, or wordplay. 
+Encourage action: Prompt the user to log in to "nounspace" with Farcaster to customize their token's space with Themes, Fidgets (mini apps), and Tabs.
+
+# Tips for Better Output:
+Include dynamic personalization to create a strong sense of connection.
+Maintain clarity despite the creative tone.
+No preamble, no wrap-up: Just output the final message. No "Here's your message" intro or follow-up comments.
+
+# IMPORTANT
+"nounspace" brand is always lowercase.
+Always output 'nounspace' in lowercase, never capitalized.
+Do not include any hashtags.
+Do not mention @${this.runtime.character.username}. Only mention token owner's username @${deployerInfo.username}.
+
+<about_token>
+  username: @${deployerInfo.username}
+  user bio: ${deployerInfo.bio || 'No bio provided.'}
+<about_token>
+`;
+
+    // 7. Generate reply
+    let replyText = `Hey @${deployerInfo.username}! Log into nounspace with Farcaster and customize your token space with Themes, Fidgets, and Tabs.\n\nHere's your token space: ${nounspacePage}`; // Fallback
+    try {
+      const response = await this.runtime.useModel(ModelType.LARGE, { prompt });
+      const llmResponse = typeof response === 'string' ? response : response.text;
+      if (llmResponse) {
+        replyText = llmResponse.replace(/^"|"$/g, '').replace(/\\n+/g, '') + `\n\nHere's your token space: ${nounspacePage}`;
+      }
+    } catch (error) {
+      logger.error('LLM call failed for custom target reply, using fallback.', error);
+    }
+
+    // 8. Publish reply
+    logger.info(`Replying to clanker cast ${cast.hash} with: ${replyText}`);
+
+    if (this.config.FARCASTER_DRY_RUN) {
+      logger.warn(`[DRY RUN] Would have replied with: ${replyText}`);
+      return;
+    }
+
+    await this.client.sendCast({
+      content: { text: replyText },
+      inReplyTo: { hash: cast.hash, fid: cast.authorFid },
+    });
   }
 
   /**

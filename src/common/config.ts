@@ -157,6 +157,15 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
       SPAM_WHITE_LIST_USERS:
         runtime.getSetting('SPAM_WHITE_LIST_USERS') ||
         process.env.SPAM_WHITE_LIST_USERS,
+      
+      // Custom target user settings
+      FARCASTER_CUSTOM_TARGET_USERS:
+        runtime.getSetting('FARCASTER_CUSTOM_TARGET_USERS') ||
+        process.env.FARCASTER_CUSTOM_TARGET_USERS,
+      
+      MIN_NEYNAR_SCORE:
+        runtime.getSetting('MIN_NEYNAR_SCORE') ||
+        process.env.MIN_NEYNAR_SCORE,
     };
 
     logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);

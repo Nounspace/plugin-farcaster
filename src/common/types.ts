@@ -103,6 +103,13 @@ export const FarcasterConfigSchema = z.object({
     (val) => (typeof val === 'string' ? val.split(',').map(u => u.trim()).filter(Boolean) : []),
     z.array(z.string()).optional()
   ),
+
+  // Custom target user settings
+  FARCASTER_CUSTOM_TARGET_USERS: z.preprocess(
+    (val) => (typeof val === 'string' ? val.split(',').map(u => u.trim()).filter(Boolean) : val),
+    z.array(z.coerce.number()).optional()
+  ),
+  MIN_NEYNAR_SCORE: z.coerce.number().optional().default(0.7),
 });
 
 export type FarcasterConfig = z.infer<typeof FarcasterConfigSchema>;
