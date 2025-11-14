@@ -129,9 +129,9 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         process.env.FARCASTER_HUB_RPC ||
         "http://hub-grpc-api.neynar.com",
       
-      FARCASTER_TARGET_CHANNEL:
-        runtime.getSetting('FARCASTER_TARGET_CHANNEL') ||
-        process.env.FARCASTER_TARGET_CHANNEL,
+      FARCASTER_TARGET_CHANNELS:
+        runtime.getSetting('FARCASTER_TARGET_CHANNELS') ||
+        process.env.FARCASTER_TARGET_CHANNELS,
       
       FARCASTER_TARGET_USERS:
         runtime.getSetting('FARCASTER_TARGET_USERS') ||
@@ -150,22 +150,22 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         runtime.getSetting('SPAM_FILTER_SHARED') ||
         process.env.SPAM_FILTER_SHARED,
 
-      SPAM_FILTER_PROMPT:
-        runtime.getSetting('SPAM_FILTER_PROMPT') ||
-        process.env.SPAM_FILTER_PROMPT,
+      // SPAM_FILTER_PROMPT:
+      //   runtime.getSetting('SPAM_FILTER_PROMPT') ||
+      //   process.env.SPAM_FILTER_PROMPT,
 
       SPAM_WHITE_LIST_USERS:
         runtime.getSetting('SPAM_WHITE_LIST_USERS') ||
-        process.env.SPAM_WHITE_LIST_USERS,
+        process.env.SPAM_WHITE_LIST_USERS || [],
       
       // Custom target user settings
       FARCASTER_CUSTOM_TARGET_USERS:
         runtime.getSetting('FARCASTER_CUSTOM_TARGET_USERS') ||
-        process.env.FARCASTER_CUSTOM_TARGET_USERS,
+        process.env.FARCASTER_CUSTOM_TARGET_USERS || [],
       
       MIN_NEYNAR_SCORE:
         runtime.getSetting('MIN_NEYNAR_SCORE') ||
-        process.env.MIN_NEYNAR_SCORE,
+        process.env.MIN_NEYNAR_SCORE || 0.7,
     };
 
     logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);

@@ -218,13 +218,12 @@ Do not mention @${this.runtime.character.username}. Only mention token owner's u
     // 7. Generate reply
     let replyText = `Hey @${deployerInfo.username}! Log into nounspace with Farcaster and customize your token space with Themes, Fidgets, and Tabs.\n\nHere's your token space: ${nounspacePage}`; // Fallback
     try {
-      const response = await this.runtime.useModel(ModelType.LARGE, { prompt });
-      const llmResponse = typeof response === 'string' ? response : response.text;
+      const llmResponse = await this.runtime.useModel(ModelType.LARGE, { prompt });
       if (llmResponse) {
         replyText = llmResponse.replace(/^"|"$/g, '').replace(/\\n+/g, '') + `\n\nHere's your token space: ${nounspacePage}`;
       }
     } catch (error) {
-      logger.error('LLM call failed for custom target reply, using fallback.', error);
+      logger.error("Farcaster:", 'LLM call failed for custom target reply, using fallback.', error);
     }
 
     // 8. Publish reply

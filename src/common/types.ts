@@ -68,8 +68,14 @@ export const FarcasterConfigSchema = z.object({
 
   // Stream configuration
   FARCASTER_HUB_RPC: z.string().optional(),
-  FARCASTER_TARGET_CHANNEL: z.string().optional(),
-  FARCASTER_TARGET_USERS: z.string().optional(),
+  FARCASTER_TARGET_CHANNELS: z.preprocess(
+    (val) => (typeof val === 'string' ? val.split(',').map(c => c.trim()).filter(Boolean) : val),
+    z.array(z.string()).optional()
+  ),
+  FARCASTER_TARGET_USERS: z.preprocess(
+    (val) => (typeof val === 'string' ? val.split(',').map(u => u.trim()).filter(Boolean) : val),
+    z.array(z.coerce.number()).optional()
+  ),
   FARCASTER_TARGET_REGEX: z.string().optional(),
 
   ENABLE_CAST: z

@@ -12,7 +12,7 @@ const farcasterPlugin = {
   providers: farcasterProviders,
   routes: farcasterWebhookRoutes,
   tests: [new FarcasterTestSuite()],
-  events: []
+  // events: []
 };
 
 export default farcasterPlugin;
