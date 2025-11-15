@@ -88,6 +88,7 @@ export class FarcasterClient {
 
     return response.cast;
   }
+
   async getMentions(request: FidRequest): Promise<NeynarCast[]> {
     const neynarMentionsResponse = await this.neynar.fetchAllNotifications({
       fid: request.fid,
@@ -106,42 +107,6 @@ export class FarcasterClient {
     return mentions;
   }
 
-  // async getProfile(fid: number): Promise<Profile> {
-  //   if (profileCache.has(fid)) {
-  //     return profileCache.get(fid) as Profile;
-  //   }
-
-  //   logger.warn("GetProfile", `for user FID ${fid}`)
-
-  //   try {
-  //     const result = await this.neynar.fetchBulkUsers({ fids: [fid] });
-  //     if (!result.users || result.users.length < 1) {
-  //       elizaLogger.error('Error fetching user by fid');
-  //       // throw new Error('Profile fetch failed');
-  //     }
-
-  //     const neynarUserProfile = result.users[0];
-
-  //     const profile: Profile = {
-  //       fid,
-  //       name: '',
-  //       username: '',
-  //     };
-
-  //     profile.name = neynarUserProfile.display_name!;
-  //     profile.username = neynarUserProfile.username;
-  //     profile.bio = neynarUserProfile.profile.bio.text;
-  //     profile.pfp = neynarUserProfile.pfp_url;
-  //     profile.score = neynarUserProfile.score;
-
-  //     profileCache.set(fid, profile);
-
-  //     return profile;
-  //   } catch (error) {
-  //     elizaLogger.error(`Error fetching profile: ${JSON.stringify(error)}`);
-  //     throw error;
-  //   }
-  // }
   async getProfile(fid: number): Promise<Profile> {
     return this.profileFetcher.getProfile(fid);
   }
