@@ -1,6 +1,5 @@
 import { IAgentRuntime, logger, MemoryType } from '@elizaos/core';
-import type { MemoryScope } from "@elizaos/core";
-import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+// import type { MemoryScope } from "@elizaos/core";
 import {
     HubEvent,
     HubEventType,
@@ -10,9 +9,6 @@ import {
     createDefaultMetadataKeyInterceptor,
     ClientOptions,
     HubRpcClient,
-    fromFarcasterTime,
-    CastAddBody,
-    Protocol,
     UserDataType,
     isUserDataAddMessage,
 } from '@farcaster/hub-nodejs';
@@ -37,7 +33,8 @@ export class FarcasterStreamService extends EventEmitter {
     private currentStream: any = null;
     private isRunning: boolean = false;    
     private lastDebugLogTime: number = 0;
-
+    private StreamlatestEventBlock: number | null = null;
+    
     private config: FarcasterConfig;
     private client: FarcasterClient;
     private runtime: IAgentRuntime;
@@ -76,6 +73,7 @@ export class FarcasterStreamService extends EventEmitter {
         this.isRunning = true;
 
         const lastId = await this.getStreamLatestEventBlock();
+        // logger.warn("DEBUG", "getStreamLatestEventBlock", lastId)
         this.subscriberStream(lastId);
     }
 
@@ -122,6 +120,7 @@ export class FarcasterStreamService extends EventEmitter {
                         return;
                     }
                     await this.saveStreamLatestEventBlock(e.id);
+                    // console.log(e.id)
                     this.handleEvent(e);
                 });
 
@@ -260,21 +259,23 @@ export class FarcasterStreamService extends EventEmitter {
         const allTargetFids = Array.from(new Set([...targetUsers, ...customTargetFids]));
         const isFromTargetUser = allTargetFids.includes(authorFid);
 
-
-
         let castType: CastType = 'other';
         if (isMention) {
             castType = 'mention';
-            logger.warn("Farcaster:", "Is Mention", castAddBody.mentions)
+            logger.warn("Farcaster:", "Mention", castAddBody.mentions)
+            logger.warn("Farcaster:", "Timestamp", msg.data.timestamp)
         } else if (isReply) {
             castType = 'reply';
-            logger.warn("Farcaster:", "Is Reply", castAddBody.parentCastId?.fid)
+            logger.warn("Farcaster:", "Reply", castAddBody.parentCastId?.fid)
+            logger.warn("Farcaster:", "Timestamp", msg.data.timestamp)
         } else if (isFromTargetChannel) {
             castType = 'channel';
-            logger.warn("Farcaster:", "Is from Channel", castAddBody.parentUrl)
+            logger.warn("Farcaster:", "from Channel", castAddBody.parentUrl)
+            logger.warn("Farcaster:", "Timestamp", msg.data.timestamp)
         } else if (isFromTargetUser) {
             castType = 'user';
-            logger.warn("Farcaster:", "Is From Targe tUser", targetUsers)
+            logger.warn("Farcaster:", "From Targe tUser", targetUsers)
+            logger.warn("Farcaster:", "Timestamp", msg.data.timestamp)
         }
 
         if (castType == 'other') {
@@ -294,80 +295,11 @@ export class FarcasterStreamService extends EventEmitter {
             const cast = await this.createCastObj(msg, castType);
             if (cast) {
                 this.emit(FarcasterEventTypes.STREAM_CAST_RECEIVED, cast);
-
-                // const neynarCast = await this.castToNeynarCast(cast)
-                // console.dir(cast)
             }
         } catch (error: any) {
             logger.error(`Error processing cast in handleAddCast for FID ${authorFid}:`, error);
         }
     }
-
-/*** Sample data
-{
-  data: {
-    type: 1,
-    fid: 587089,
-    timestamp: 153273857,
-    network: 1,
-    castAddBody: {
-      embedsDeprecated: [],
-      mentions: [ 15006, 297564, 869021, 826917, 270250 ],
-      parentCastId: undefined,
-      parentUrl: "https://warpcast.com/~/channel/riseandshine",
-      text: "Got my Warplet! 🎉 Collect unique Farcaster Warplet profile NFTs on Base. 🟦\n\nHey     , try opening a Warplet Blind Box too!",
-      mentionsPositions: [ 86, 87, 88, 89, 90 ],
-      embeds: [
-        [Object ...]
-      ],
-      type: 0,
-    },
-    castRemoveBody: undefined,
-    reactionBody: undefined,
-    verificationAddAddressBody: undefined,
-    verificationRemoveBody: undefined,
-    userDataBody: undefined,
-    linkBody: undefined,
-    usernameProofBody: undefined,
-    frameActionBody: undefined,
-    linkCompactStateBody: undefined,
-    lendStorageBody: undefined,
-},
-{
-  data: {
-    type: 1,
-    fid: 1264007,
-    timestamp: 153273859,
-    network: 1,
-    castAddBody: {
-      embedsDeprecated: [],
-      mentions: [],
-      parentCastId: undefined,
-      parentUrl: undefined,
-      text: "Go to the moon 🤩 🤩 🤩 ✨",
-      mentionsPositions: [],
-      embeds: [],
-      type: 0,
-    },
-    castRemoveBody: undefined,
-    reactionBody: undefined,
-    verificationAddAddressBody: undefined,
-    verificationRemoveBody: undefined,
-    userDataBody: undefined,
-    linkBody: undefined,
-    usernameProofBody: undefined,
-    frameActionBody: undefined,
-    linkCompactStateBody: undefined,
-    lendStorageBody: undefined,
-  },
-  hash: Buffer(20) [...],
-  hashScheme: 1,
-  signature: Buffer(64) [...],
-  signatureScheme: 1,
-  signer: Buffer(32) [...],
-  dataBytes: Buffer(54) [...],
-}
-                     */
 
     private async createCastObj(message: Message, type: CastType): Promise<Cast | undefined> {
         if (!message.data || !message.data.castAddBody) return;
@@ -401,65 +333,6 @@ export class FarcasterStreamService extends EventEmitter {
 
         return cast;
     }
-
-
-    // private async castToNeynarCast(
-    // cast: Cast
-    // ): Promise<NeynarCast> {
-    // const author = await this.client.getProfile(cast.authorFid);
-    
-    // const parent_author = cast.inReplyTo
-    //     ? await this.client.getProfile(cast.inReplyTo.fid)
-    //     : null;
-
-    // return {
-    //     object: "cast",
-    //     hash: cast.hash,
-    //     parent_hash: cast.inReplyTo?.hash ?? null,
-    //     parent_url: null,
-    //     root_parent_url: null,
-    //     parent_author: parent_author
-    //     ? {
-    //         fid: parent_author.fid,
-    //         username: parent_author.username,
-    //         }
-    //     : ({} as any),
-
-    //     author: {
-    //         ...author, 
-    //         follower_count: 0,
-    //         following_count: 0,
-    //         custody_address: "",
-    //         verifications: [],
-    //         verified_addresses: [],
-    //     },
-    //     app: null,
-    //     text: cast.text,
-    //     timestamp: cast.timestamp.toISOString(),
-    //     embeds: [],
-
-    //     type: undefined,
-    //     reactions: {
-    //     likes: [],
-    //     recasts: [],
-    //     likes_count: cast.stats?.likes ?? 0,
-    //     recasts_count: cast.stats?.recasts ?? 0,
-    //     },
-    //     replies: {
-    //     count: cast.stats?.replies ?? 0,
-    //     },
-
-    //     thread_hash: cast.threadId ?? null,
-    //     mentioned_profiles: [],
-    //     mentioned_profiles_ranges: [],
-    //     mentioned_channels: [],
-    //     mentioned_channels_ranges: [],
-    //     channel: null,
-    //     viewer_context: undefined,
-    //     author_channel_context: undefined,
-    // };
-    // }
-
 
     private bytesToHex(value: Uint8Array): `0x${string}` {
         return `0x${Buffer.from(value).toString("hex")}`;
@@ -548,21 +421,6 @@ export class FarcasterStreamService extends EventEmitter {
 
         return graphemes.join('');
     }
-
-    // private async insertMentions(text: string, mentions: number[], mentionsPositions: number[]): Promise<string> {
-    //     const splitter = new GraphemeSplitter();
-    //     const graphemes = splitter.splitGraphemes(text);
-
-    //     for (let i = mentions.length - 1; i >= 0; i--) {
-    //         const mention = mentions[i];
-    //         const fName = await this.getUsernameFromFid(mention);
-    //         const position = mentionsPositions[i];
-    //         graphemes.splice(position, 1, `@${fName}`);
-    //     }
-    //     return graphemes.join('');
-    // }
-
-    private StreamlatestEventBlock: number | null = null;
 
     private saveStreamLatestEventBlock = async (blockId: number) => {
         this.StreamlatestEventBlock = blockId;
