@@ -108,5 +108,3 @@ export const farcasterThreadProvider: Provider = {
         };
     },
 };
-
-

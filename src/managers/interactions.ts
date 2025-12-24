@@ -239,7 +239,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
           memory: newMemory,
           cast: currentCast,
           source: FARCASTER_SOURCE,
-        }  as EventPayload);
+        } as EventPayload);
       }
 
       thread.unshift(currentCast);
