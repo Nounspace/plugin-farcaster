@@ -112,6 +112,7 @@ export const replyCastAction: Action = {
       runtime.logger.info(`[REPLY_TO_CAST] Successfully replied to cast: ${reply.id}`);
     } catch (error) {
       runtime.logger.error('[REPLY_TO_CAST] Error replying to cast:', typeof error === 'string' ? error : (error as Error).message);
+      throw error;
     }
   },
 };
