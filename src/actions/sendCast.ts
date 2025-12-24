@@ -3,7 +3,6 @@ import {
   type IAgentRuntime,
   type Memory,
   type State,
-  logger,
   createUniqueUuid,
 } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
@@ -91,7 +90,7 @@ export const sendCastAction: Action = {
         text: castContent,
       });
 
-      logger.info(`[SEND_CAST] Successfully posted cast: ${cast.id}`);
+      runtime.logger.info(`[SEND_CAST] Successfully posted cast: ${cast.id}`);
 
       // Store the cast in memory
       await runtime.createMemory(

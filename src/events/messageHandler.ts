@@ -1,14 +1,11 @@
 import {
+  EventType,
   type IAgentRuntime,
   type Memory,
-  logger,
-  EventType,
   type MessagePayload,
-  createUniqueUuid,
-  type UUID,
+  type UUID
 } from '@elizaos/core';
-import { FARCASTER_SERVICE_NAME, FARCASTER_SOURCE } from '../common/constants';
-import type { FarcasterService } from '../service';
+import { FARCASTER_SOURCE } from '../common/constants';
 
 /**
  * Handles when a Farcaster message is sent by the agent
@@ -142,8 +139,7 @@ export const handleReplyTracking = async (payload: {
     );
   } catch (error) {
     // Use global logger as fallback if runtime is not available
-    const errorLogger = payload?.runtime?.logger || logger;
-    errorLogger.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
+    payload?.runtime?.logger?.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -154,5 +150,5 @@ export const registerFarcasterEventHandlers = (runtime: IAgentRuntime): void => 
   // Handle incoming messages
   runtime.emitEvent(EventType.MESSAGE_RECEIVED, handleCastReceived);
 
-  logger.info('[FarcasterMessageHandler] Event handlers registered');
+  runtime.logger.info('[FarcasterMessageHandler] Event handlers registered');
 };

@@ -1,4 +1,4 @@
-import { Content, HandlerCallback, IAgentRuntime, logger, Memory, UUID } from '@elizaos/core';
+import { Content, HandlerCallback, IAgentRuntime, Memory, UUID } from '@elizaos/core';
 import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
 import { FarcasterClient } from '../client';
 import { CastId, FarcasterConfig } from './types';
@@ -24,21 +24,21 @@ export function standardCastHandlerCallback({
   const callback: HandlerCallback = async (content: Content, _files?: any) => {
     try {
       if (config.FARCASTER_DRY_RUN) {
-        logger.info(`[Farcaster] Dry run: would have cast: ${content.text}`);
+        runtime.logger.info(`[Farcaster] Dry run: would have cast: ${content.text}`);
         return [];
       }
 
       const casts = await client.sendCast({ content, inReplyTo });
 
       if (casts.length === 0) {
-        logger.warn('[Farcaster] No casts posted');
+        runtime.logger.warn('[Farcaster] No casts posted');
         return [];
       }
 
       const memories: Memory[] = [];
       for (let i = 0; i < casts.length; i++) {
         const cast = casts[i];
-        logger.success(`[Farcaster] Published cast ${cast.hash}`);
+        runtime.logger.success(`[Farcaster] Published cast ${cast.hash}`);
 
         const memory = createCastMemory({
           roomId,

@@ -1,4 +1,4 @@
-import { type IAgentRuntime, logger, createUniqueUuid, type TestCase } from '@elizaos/core';
+import { type IAgentRuntime, createUniqueUuid, type TestCase } from '@elizaos/core';
 import { getFarcasterFid } from '../../common/config.js';
 import { FARCASTER_SERVICE_NAME } from '../../common/constants.js';
 import type { FarcasterService } from '../../service.js';
@@ -32,7 +32,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Failed to create introduction cast');
       }
       
-      logger.info(`Posted introduction cast: ${cast.metadata.castHash}`);
+      runtime.logger.info(`Posted introduction cast: ${cast.metadata.castHash}`);
 
       // Test 2: Fetch profile
       const manager = service.getActiveManagers().get(runtime.agentId);
@@ -50,7 +50,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Profile fetch failed or FID mismatch');
       }
       
-      logger.info(`Agent profile verified: @${profile.username} (FID: ${profile.fid})`);
+      runtime.logger.info(`Agent profile verified: @${profile.username} (FID: ${profile.fid})`);
     }
   },
 
@@ -78,14 +78,14 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('getPosts did not return an array');
       }
       
-      logger.info(`Found ${casts.length} casts in timeline`);
+      runtime.logger.info(`Found ${casts.length} casts in timeline`);
       
       if (casts.length > 0) {
         const firstCast = casts[0];
         if (!firstCast.id || !firstCast.username || !firstCast.text) {
           throw new Error('Cast missing required fields');
         }
-        logger.info(`Latest cast by @${firstCast.username}: ${firstCast.text.substring(0, 50)}...`);
+        runtime.logger.info(`Latest cast by @${firstCast.username}: ${firstCast.text.substring(0, 50)}...`);
       }
 
       // Test 2: Fetch mentions
@@ -95,7 +95,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('getMentions did not return an array');
       }
       
-      logger.info(`Found ${mentions.length} mentions`);
+      runtime.logger.info(`Found ${mentions.length} mentions`);
     }
   },
 
@@ -126,7 +126,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Failed to send message or missing metadata');
       }
       
-      logger.info(`Sent cast with hash: ${message.metadata.castHash}`);
+      runtime.logger.info(`Sent cast with hash: ${message.metadata.castHash}`);
       
       // Retrieve the message
       const castHash = message.metadata.castHash as string;
@@ -136,7 +136,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Failed to retrieve message or content mismatch');
       }
       
-      logger.info('Successfully retrieved message by hash');
+      runtime.logger.info('Successfully retrieved message by hash');
     }
   },
 
@@ -182,7 +182,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Failed to create reply or missing thread context');
       }
       
-      logger.info(`Created reply ${reply.metadata.castHash} to ${originalCast.metadata.castHash}`);
+      runtime.logger.info(`Created reply ${reply.metadata.castHash} to ${originalCast.metadata.castHash}`);
     }
   },
 
@@ -213,7 +213,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       // Execute the action (returns void, so just check it doesn't throw)
       await sendCastAction.handler(runtime, mockMessage);
       
-      logger.info('Successfully validated and executed SEND_CAST action');
+      runtime.logger.info('Successfully validated and executed SEND_CAST action');
     }
   },
 
@@ -240,7 +240,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Profile provider returned invalid context');
       }
       
-      logger.info(`Profile provider: ${profileContext.text}`);
+      runtime.logger.info(`Profile provider: ${profileContext.text}`);
       
       // Test timeline provider
       const timelineContext = await farcasterTimelineProvider.get(runtime, mockMessage, { values: [], data: {}, text: '' });
@@ -249,7 +249,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Timeline provider returned invalid context');
       }
       
-      logger.info(`Timeline provider: ${timelineContext.text}`);
+      runtime.logger.info(`Timeline provider: ${timelineContext.text}`);
     }
   },
 
@@ -276,7 +276,7 @@ export const farcasterE2EScenarios: TestCase[] = [
             text: `Rate limit test message ${i + 1}`,
             type: FarcasterMessageType.CAST,
           }).catch(error => {
-            logger.warn(`Expected rate limit error: ${error.message}`);
+            runtime.logger.warn(`Expected rate limit error: ${error.message}`);
             return null;
           })
         );
@@ -289,7 +289,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('All messages failed - check if rate limiting is too strict');
       }
       
-      logger.info(`Successfully sent ${successfulSends.length} out of ${promises.length} messages`);
+      runtime.logger.info(`Successfully sent ${successfulSends.length} out of ${promises.length} messages`);
     }
   },
 
@@ -307,11 +307,11 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Health check returned invalid data');
       }
       
-      logger.info(`Service health: ${health.healthy ? 'Healthy' : 'Unhealthy'}`);
-      logger.info(`Active managers: ${health.details.activeManagers}`);
+      runtime.logger.info(`Service health: ${health.healthy ? 'Healthy' : 'Unhealthy'}`);
+      runtime.logger.info(`Active managers: ${health.details.activeManagers}`);
       
       if (!health.healthy) {
-        logger.warn({ details: health.details }, 'Service reported unhealthy status');
+        runtime.logger.warn({ details: health.details }, 'Service reported unhealthy status');
       }
     }
   },
@@ -330,7 +330,7 @@ export const farcasterE2EScenarios: TestCase[] = [
       }
 
       const uniqueMessage = `This is a real E2E test cast from ElizaOS! ID: ${createUniqueUuid(runtime, 'e2e-cast')}`;
-      logger.info(`Attempting to post cast: "${uniqueMessage}"`);
+      runtime.logger.info(`Attempting to post cast: "${uniqueMessage}"`);
 
       const cast = await castService.createCast({
         agentId: runtime.agentId,
@@ -342,7 +342,7 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('E2E test failed to create a real cast.');
       }
 
-      logger.success(`Successfully posted E2E test cast with ID: ${cast.id}`);
+      runtime.logger.success(`Successfully posted E2E test cast with ID: ${cast.id}`);
       // In a real-world scenario, you might want to add a step to delete this cast
       // if the API supports it, to keep the feed clean.
     },

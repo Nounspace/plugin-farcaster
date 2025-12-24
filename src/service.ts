@@ -1,4 +1,4 @@
-import { logger, Service, UUID, type IAgentRuntime } from '@elizaos/core';
+import { Service, UUID, type IAgentRuntime } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from './common/constants';
 import { FarcasterAgentManager } from './managers/agent';
 import { getFarcasterFid, hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
@@ -36,12 +36,12 @@ export class FarcasterService extends Service {
     let manager = service.managers.get(runtime.agentId);
 
     if (manager) {
-      logger.warn({ agentId: runtime.agentId }, 'Farcaster service already started');
+      runtime.logger.warn({ agentId: runtime.agentId }, 'Farcaster service already started');
       return service;
     }
 
     if (!hasFarcasterEnabled(runtime)) {
-      logger.debug({ agentId: runtime.agentId }, 'Farcaster service not enabled');
+      runtime.logger.debug({ agentId: runtime.agentId }, 'Farcaster service not enabled');
       return service;
     }
 
@@ -58,7 +58,7 @@ export class FarcasterService extends Service {
 
     await manager.start();
 
-    logger.success({ agentId: runtime.agentId },'Farcaster client started');
+    runtime.logger.success({ agentId: runtime.agentId },'Farcaster client started');
     return service;
   }
 
@@ -71,21 +71,21 @@ export class FarcasterService extends Service {
       service.managers.delete(runtime.agentId);
       service.messageServices.delete(runtime.agentId);
       service.castServices.delete(runtime.agentId);
-      logger.info({ agentId: runtime.agentId }, 'Farcaster client stopped');
+      runtime.logger.info({ agentId: runtime.agentId }, 'Farcaster client stopped');
     } else {
-      logger.debug({ agentId: runtime.agentId },'Farcaster service not running');
+      runtime.logger.debug({ agentId: runtime.agentId },'Farcaster service not running');
     }
   }
 
   // Called to stop all Farcaster services
   async stop(): Promise<void> {
-    logger.debug('Stopping ALL Farcaster services');
     for (const manager of Array.from(this.managers.values())) {
       const agentId = manager.runtime.agentId;
+      manager.runtime.logger.debug('Stopping Farcaster service');
       try {
         await FarcasterService.stop(manager.runtime);
       } catch (error) {
-        logger.error({ agentId, error }, 'Error stopping Farcaster service');
+        manager.runtime.logger.error({ agentId, error }, 'Error stopping Farcaster service');
       }
     }
   }

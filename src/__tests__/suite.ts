@@ -3,7 +3,6 @@ import {
   ModelType,
   type TestSuite,
   createUniqueUuid,
-  logger,
   type TestCase,
 } from '@elizaos/core';
 import { getFarcasterFid, hasFarcasterEnabled } from '../common/config';
@@ -37,13 +36,13 @@ export class FarcasterTestSuite implements TestSuite {
       const mockTest: TestCase = {
         name: `Mock: ${realTest.name}`,
         fn: async (runtime: IAgentRuntime) => {
-          logger.info(
+          runtime.logger.info(
             `This is a mock execution of "${realTest.name}". To run the real test, configure Farcaster settings for the '${runtime.character.name}' agent.`
           );
           // You could add mock service validation here if needed.
           const service = runtime.getService(FARCASTER_SERVICE_NAME);
           if (!service) {
-            logger.warn('Farcaster service not available in mock mode, which might be expected.');
+            runtime.logger.warn('Farcaster service not available in mock mode, which might be expected.');
           }
         },
       };
@@ -70,18 +69,18 @@ export class FarcasterTestSuite implements TestSuite {
       name: realTest.name,
       fn: async (runtime: IAgentRuntime) => {
         if (hasFarcasterEnabled(runtime)) {
-          logger.info(
+          runtime.logger.info(
             `[${realTest.name}] Running test with real credentials for agent: ${runtime.character.name}`
           );
           await realTest.fn(runtime);
         } else {
           if (mockTest) {
-            logger.warn(
+            runtime.logger.warn(
               `[${mockTest.name}] Running mock test for agent: ${runtime.character.name} (credentials not found)`
             );
             await mockTest.fn(runtime);
           } else {
-            logger.info(
+            runtime.logger.info(
               `[${realTest.name}] Skipping test for agent: ${runtime.character.name} (credentials not found)`
             );
           }
@@ -94,24 +93,24 @@ export class FarcasterTestSuite implements TestSuite {
    * Test that checks and logs the Farcaster configuration for the current agent.
    */
   async testConfiguration(runtime: IAgentRuntime) {
-    logger.info(`=== Farcaster Test Configuration for [${runtime.character.name}] ===`);
+    runtime.logger.info(`=== Farcaster Test Configuration for [${runtime.character.name}] ===`);
     const fid = runtime.getSetting('FARCASTER_FID');
     const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
     const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
     const dryRun = runtime.getSetting('FARCASTER_DRY_RUN') || 'not set (defaults to false)';
 
-    logger.info(`FID: ${fid ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`Signer UUID: ${signerUuid ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`API Key: ${apiKey ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`Dry Run: ${dryRun}`);
-    logger.info('===================================================');
+    runtime.logger.info(`FID: ${fid ? '✓ Found' : '✗ Missing'}`);
+    runtime.logger.info(`Signer UUID: ${signerUuid ? '✓ Found' : '✗ Missing'}`);
+    runtime.logger.info(`API Key: ${apiKey ? '✓ Found' : '✗ Missing'}`);
+    runtime.logger.info(`Dry Run: ${dryRun}`);
+    runtime.logger.info('===================================================');
 
     if (!hasFarcasterEnabled(runtime)) {
-      logger.warn(
+      runtime.logger.warn(
         `⚠️  Farcaster credentials not found in settings for agent [${runtime.character.name}]. Tests will be skipped or mocked.`
       );
     } else {
-      logger.success(`✅ Farcaster credentials found for agent [${runtime.character.name}].`);
+      runtime.logger.success(`✅ Farcaster credentials found for agent [${runtime.character.name}].`);
     }
   }
 
@@ -119,23 +118,23 @@ export class FarcasterTestSuite implements TestSuite {
    * Test that checks if Farcaster is properly configured
    */
   async testMockConfiguration(runtime: IAgentRuntime) {
-    logger.info('Running mock configuration test');
+    runtime.logger.info('Running mock configuration test');
     
     const fid = runtime.getSetting('FARCASTER_FID');
     const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
     const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
     
-    logger.info('Runtime settings check:');
-    logger.info(`- FID from runtime: ${fid ? 'Found' : 'Not found'}`);
-    logger.info(`- Signer UUID from runtime: ${signerUuid ? 'Found' : 'Not found'}`);
-    logger.info(`- API Key from runtime: ${apiKey ? 'Found' : 'Not found'}`);
+    runtime.logger.info('Runtime settings check:');
+    runtime.logger.info(`- FID from runtime: ${fid ? 'Found' : 'Not found'}`);
+    runtime.logger.info(`- Signer UUID from runtime: ${signerUuid ? 'Found' : 'Not found'}`);
+    runtime.logger.info(`- API Key from runtime: ${apiKey ? 'Found' : 'Not found'}`);
     
     if (!fid || !signerUuid || !apiKey) {
-      logger.info('Farcaster not configured - this is expected in mock mode');
-      logger.info('To enable real tests, configure the following:');
-      logger.info('- FARCASTER_FID: Your Farcaster ID');
-      logger.info('- FARCASTER_SIGNER_UUID: Neynar signer UUID');
-      logger.info('- FARCASTER_NEYNAR_API_KEY: Neynar API key');
+      runtime.logger.info('Farcaster not configured - this is expected in mock mode');
+      runtime.logger.info('To enable real tests, configure the following:');
+      runtime.logger.info('- FARCASTER_FID: Your Farcaster ID');
+      runtime.logger.info('- FARCASTER_SIGNER_UUID: Neynar signer UUID');
+      runtime.logger.info('- FARCASTER_NEYNAR_API_KEY: Neynar API key');
     }
   }
 
@@ -143,33 +142,33 @@ export class FarcasterTestSuite implements TestSuite {
    * Test service initialization without real credentials
    */
   async testMockServiceInit(runtime: IAgentRuntime) {
-    logger.info('Running mock service initialization test');
+    runtime.logger.info('Running mock service initialization test');
     
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as any;
       
       if (!service) {
-        logger.info('Farcaster service not available - this is expected without credentials');
+        runtime.logger.info('Farcaster service not available - this is expected without credentials');
         return;
       }
       
-      logger.info('Farcaster service is registered but may not be fully initialized');
+      runtime.logger.info('Farcaster service is registered but may not be fully initialized');
       
       // Test that service methods exist
       if (typeof service.getMessageService === 'function') {
-        logger.info('✓ getMessageService method exists');
+        runtime.logger.info('✓ getMessageService method exists');
       }
       
       if (typeof service.getPostService === 'function') {
-        logger.info('✓ getPostService method exists');
+        runtime.logger.info('✓ getPostService method exists');
       }
       
       if (typeof service.healthCheck === 'function') {
-        logger.info('✓ healthCheck method exists');
+        runtime.logger.info('✓ healthCheck method exists');
       }
       
     } catch (error) {
-      logger.info('Service initialization check completed');
+      runtime.logger.info('Service initialization check completed');
     }
   }
 
@@ -189,7 +188,7 @@ export class FarcasterTestSuite implements TestSuite {
       this.manager = service.managers.get(runtime.agentId);
 
       if (this.manager) {
-        logger.debug('FarcasterAgentManager initialized successfully.');
+        runtime.logger.debug('FarcasterAgentManager initialized successfully.');
       } else {
         throw new Error('FarcasterAgentManager failed to initialize.');
       }
@@ -219,7 +218,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!profile || !profile.fid) {
         throw new Error('Profile fetch failed.');
       }
-      logger.log('Successfully fetched Farcaster profile:', JSON.stringify(profile));
+      runtime.logger.log('Successfully fetched Farcaster profile:', JSON.stringify(profile));
     } catch (error) {
       throw new Error(`Error fetching Farcaster profile: ${error}`);
     }
@@ -249,7 +248,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!result.timeline || result.timeline.length === 0) {
         throw new Error('No casts in timeline.');
       }
-      logger.log(`Successfully fetched ${result.timeline.length} casts from timeline.`);
+      runtime.logger.log(`Successfully fetched ${result.timeline.length} casts from timeline.`);
     } catch (error) {
       throw new Error(`Error fetching timeline: ${error}`);
     }
@@ -276,7 +275,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!result || result.length === 0) {
         throw new Error('Cast posting failed.');
       }
-      logger.success('Successfully posted a test cast.');
+      runtime.logger.success('Successfully posted a test cast.');
     } catch (error) {
       throw new Error(`Error posting a cast: ${error}`);
     }
@@ -308,7 +307,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!result || result.length === 0) {
         throw new Error('Cast with image posting failed.');
       }
-      logger.success('Successfully posted a test cast with image.');
+      runtime.logger.success('Successfully posted a test cast with image.');
     } catch (error) {
       throw new Error(`Error posting a cast with image: ${error}`);
     }
@@ -362,7 +361,7 @@ export class FarcasterTestSuite implements TestSuite {
         source: 'farcaster',
       });
 
-      logger.success('Successfully simulated cast response handling');
+      runtime.logger.success('Successfully simulated cast response handling');
     } catch (error) {
       throw new Error(`Error handling cast response: ${error}`);
     }
@@ -413,7 +412,7 @@ export class FarcasterTestSuite implements TestSuite {
         limit: 5,
       });
 
-      logger.log(`Retrieved ${messages.length} messages from MessageService`);
+      runtime.logger.log(`Retrieved ${messages.length} messages from MessageService`);
 
       // Test sendMessage
       const testText = await this.generateRandomCastContent(runtime, 'message_service_test');
@@ -428,7 +427,7 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Failed to send message via MessageService');
       }
 
-      logger.success('MessageService test completed successfully');
+      runtime.logger.success('MessageService test completed successfully');
     } catch (error) {
       throw new Error(`Error testing MessageService: ${error}`);
     }
@@ -458,7 +457,7 @@ export class FarcasterTestSuite implements TestSuite {
         limit: 5,
       });
 
-      logger.log(`Retrieved ${casts.length} casts from CastService`);
+      runtime.logger.log(`Retrieved ${casts.length} casts from CastService`);
 
       // Test createCast
       const testText = await this.generateRandomCastContent(runtime, 'cast_service_test');
@@ -472,7 +471,7 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Failed to create cast via CastService');
       }
 
-      logger.success('CastService test completed successfully');
+      runtime.logger.success('CastService test completed successfully');
     } catch (error) {
       throw new Error(`Error testing PostService: ${error}`);
     }
@@ -514,13 +513,13 @@ export class FarcasterTestSuite implements TestSuite {
           throw new Error('Failed to create real post');
         }
 
-        logger.success(`Posted real cast: ${post.metadata.castHash}`);
+        runtime.logger.success(`Posted real cast: ${post.metadata.castHash}`);
         
         // Wait a bit between posts to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      logger.success('Real account posting test completed successfully');
+      runtime.logger.success('Real account posting test completed successfully');
     } catch (error) {
       throw new Error(`Error testing real account posting: ${error}`);
     }
@@ -548,14 +547,14 @@ export class FarcasterTestSuite implements TestSuite {
 
       // Get recent mentions
       const mentions = await postService.getMentions(runtime.agentId, { limit: 10 });
-      logger.log(`Found ${mentions.length} mentions`);
+      runtime.logger.log(`Found ${mentions.length} mentions`);
 
       // Get timeline posts
       const timeline = await postService.getPosts({
         agentId: runtime.agentId,
         limit: 20,
       });
-      logger.log(`Found ${timeline.length} timeline posts`);
+      runtime.logger.log(`Found ${timeline.length} timeline posts`);
 
       // If we have posts, try to reply to one
       if (timeline.length > 0) {
@@ -573,12 +572,12 @@ export class FarcasterTestSuite implements TestSuite {
           });
 
           if (reply && reply.metadata?.castHash) {
-            logger.success(`Replied to cast with: ${reply.metadata.castHash}`);
+            runtime.logger.success(`Replied to cast with: ${reply.metadata.castHash}`);
           }
         }
       }
 
-      logger.success('Real account interactions test completed successfully');
+      runtime.logger.success('Real account interactions test completed successfully');
     } catch (error) {
       throw new Error(`Error testing real account interactions: ${error}`);
     }
@@ -615,7 +614,7 @@ export class FarcasterTestSuite implements TestSuite {
       }
 
       const castHash = testMessage.metadata.castHash;
-      logger.log(`Sent message with cast hash: ${castHash}`);
+      runtime.logger.log(`Sent message with cast hash: ${castHash}`);
 
       // Verify we can retrieve the message by its hash
       const retrievedMessage = await messageService.getMessage(castHash, runtime.agentId);
@@ -629,7 +628,7 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('Metadata mismatch in retrieved message');
       }
 
-      logger.success('Message metadata tracking test completed successfully');
+      runtime.logger.success('Message metadata tracking test completed successfully');
     } catch (error) {
       throw new Error(`Error testing message metadata tracking: ${error}`);
     }

@@ -1,4 +1,4 @@
-import { logger, parseBooleanFromText, type IAgentRuntime } from '@elizaos/core';
+import { parseBooleanFromText, type IAgentRuntime } from '@elizaos/core';
 import { ZodError } from 'zod';
 import {
   DEFAULT_MAX_CAST_LENGTH,
@@ -34,9 +34,9 @@ export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
   const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
   const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
 
-  logger.debug(`[hasFarcasterEnabled] FID: ${fid ? 'Found' : 'Missing'}`);
-  logger.debug(`[hasFarcasterEnabled] Signer UUID: ${signerUuid ? 'Found' : 'Missing'}`);
-  logger.debug(`[hasFarcasterEnabled] API Key: ${apiKey ? 'Found' : 'Missing'}`);
+  runtime.logger.debug(`[hasFarcasterEnabled] FID: ${fid ? 'Found' : 'Missing'}`);
+  runtime.logger.debug(`[hasFarcasterEnabled] Signer UUID: ${signerUuid ? 'Found' : 'Missing'}`);
+  runtime.logger.debug(`[hasFarcasterEnabled] API Key: ${apiKey ? 'Found' : 'Missing'}`);
 
   return !!(fid && signerUuid && apiKey);
 }
@@ -115,9 +115,9 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
       FARCASTER_MODE: runtime.getSetting('FARCASTER_MODE') || 'polling',
     };
 
-    logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);
-    logger.debug(`[validateFarcasterConfig] Resolved Signer UUID: ${farcasterConfig.FARCASTER_SIGNER_UUID ? 'Found' : 'Missing'}`);
-    logger.debug(`[validateFarcasterConfig] Resolved API Key: ${farcasterConfig.FARCASTER_NEYNAR_API_KEY ? 'Found' : 'Missing'}`);
+    runtime.logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);
+    runtime.logger.debug(`[validateFarcasterConfig] Resolved Signer UUID: ${farcasterConfig.FARCASTER_SIGNER_UUID ? 'Found' : 'Missing'}`);
+    runtime.logger.debug(`[validateFarcasterConfig] Resolved API Key: ${farcasterConfig.FARCASTER_NEYNAR_API_KEY ? 'Found' : 'Missing'}`);
 
     const config = FarcasterConfigSchema.parse(farcasterConfig);
 
@@ -125,22 +125,22 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
 
     // Log configuration on initialization
 
-    logger.log('Farcaster Client Configuration:');
-    logger.log(`- FID: ${config.FARCASTER_FID}`);
-    logger.log(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
-    logger.log(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
+    runtime.logger.info('Farcaster Client Configuration:');
+    runtime.logger.info(`- FID: ${config.FARCASTER_FID}`);
+    runtime.logger.info(`- Dry Run Mode: ${isDryRun ? 'enabled' : 'disabled'}`);
+    runtime.logger.info(`- Enable Cast: ${config.ENABLE_CAST ? 'enabled' : 'disabled'}`);
 
     if (config.ENABLE_CAST) {
-      logger.log(
+      runtime.logger.info(
         `- Cast Interval: ${config.CAST_INTERVAL_MIN}-${config.CAST_INTERVAL_MAX} minutes`
       );
-      logger.log(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
+      runtime.logger.info(`- Cast Immediately: ${config.CAST_IMMEDIATELY ? 'enabled' : 'disabled'}`);
     }
-    logger.log(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
-    logger.log(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);
+    runtime.logger.info(`- Action Processing: ${config.ENABLE_ACTION_PROCESSING ? 'enabled' : 'disabled'}`);
+    runtime.logger.info(`- Action Interval: ${config.ACTION_INTERVAL} minutes`);
 
     if (isDryRun) {
-      logger.log('Farcaster client initialized in dry run mode - no actual casts should be posted');
+      runtime.logger.info('Farcaster client initialized in dry run mode - no actual casts should be posted');
     }
 
     return config;
