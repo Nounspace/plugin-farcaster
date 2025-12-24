@@ -1,6 +1,7 @@
 import {
   EventType,
   type IAgentRuntime,
+  logger,
   type Memory,
   type MessagePayload,
   type UUID
@@ -47,7 +48,8 @@ export const handleCastSent = async (payload: {
 
     runtime.logger.info(`[FarcasterMessageHandler] Stored cast metadata: ${castHash}`);
   } catch (error) {
-    payload?.runtime?.logger?.error('[FarcasterMessageHandler] Error storing cast metadata:', typeof error === 'string' ? error : (error as Error).message);
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error storing cast metadata:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -92,7 +94,8 @@ export const handleCastReceived = async (payload: MessagePayload): Promise<void>
       runtime.logger.info(`[FarcasterMessageHandler] Processed incoming cast: ${castHash}`);
     }
   } catch (error) {
-    payload?.runtime?.logger?.error('[FarcasterMessageHandler] Error processing incoming cast:', typeof error === 'string' ? error : (error as Error).message);
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error processing incoming cast:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -134,8 +137,8 @@ export const handleReplyTracking = async (payload: {
       `[FarcasterMessageHandler] Linked reply ${replyCastHash} to parent ${parentCastHash}`
     );
   } catch (error) {
-    // Use global logger as fallback if runtime is not available
-    payload?.runtime?.logger?.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
