@@ -48,9 +48,11 @@ export const handleCastSent = async (payload: {
       'metadata'
     );
 
-    logger.info(`[FarcasterMessageHandler] Stored cast metadata: ${castHash}`);
+    runtime.logger.info(`[FarcasterMessageHandler] Stored cast metadata: ${castHash}`);
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error storing cast metadata:', error);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error storing cast metadata:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -58,11 +60,11 @@ export const handleCastSent = async (payload: {
  * Handles incoming Farcaster messages and enriches them with metadata
  */
 export const handleCastReceived = async (payload: MessagePayload): Promise<void> => {
-  if (payload.source !== FARCASTER_SOURCE) {
-    return;
-  }
-
   try {
+    if (payload.source !== FARCASTER_SOURCE) {
+      return;
+    }
+
     const { runtime, message } = payload;
 
     // Extract cast metadata
@@ -92,10 +94,12 @@ export const handleCastReceived = async (payload: MessagePayload): Promise<void>
         'metadata'
       );
 
-      logger.info(`[FarcasterMessageHandler] Processed incoming cast: ${castHash}`);
+      runtime.logger.info(`[FarcasterMessageHandler] Processed incoming cast: ${castHash}`);
     }
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error processing incoming cast:', error);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error processing incoming cast:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 
@@ -133,11 +137,13 @@ export const handleReplyTracking = async (payload: {
       'relationships'
     );
 
-    logger.info(
+    runtime.logger.info(
       `[FarcasterMessageHandler] Linked reply ${replyCastHash} to parent ${parentCastHash}`
     );
   } catch (error) {
-    logger.error('[FarcasterMessageHandler] Error tracking reply relationship:', error);
+    // Use global logger as fallback if runtime is not available
+    const errorLogger = payload?.runtime?.logger || logger;
+    errorLogger.error('[FarcasterMessageHandler] Error tracking reply relationship:', typeof error === 'string' ? error : (error as Error).message);
   }
 };
 

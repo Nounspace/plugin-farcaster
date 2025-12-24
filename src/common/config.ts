@@ -133,7 +133,7 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
     return config;
   } catch (error) {
     if (error instanceof ZodError) {
-      const errorMessages = error.errors
+      const errorMessages = error.issues
         .map((err) => `${err.path.join('.')}: ${err.message}`)
         .join('\n');
       throw new Error(`Farcaster configuration validation failed:\n${errorMessages}`);

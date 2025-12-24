@@ -1,4 +1,4 @@
-import { createUniqueUuid, EventType, type IAgentRuntime, logger } from '@elizaos/core';
+import { createUniqueUuid, EventType, type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import { standardCastHandlerCallback } from '../common/callbacks';
 import { FARCASTER_SOURCE } from '../common/constants';
@@ -65,16 +65,16 @@ export class FarcasterCastManager {
           await this.generateNewCast();
         }
 
-        logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
+        this.runtime.logger.log(`Next cast scheduled in ${randomMinutes} minutes`);
         await new Promise((resolve) => (this.timeout = setTimeout(resolve, delay)));
       } catch (error) {
-        logger.error('[Farcaster] Error in periodic cast loop:', this.runtime.agentId, error);
+        this.runtime.logger.error({ agentId: this.runtime.agentId, error }, '[Farcaster] Error in periodic cast loop:');
       }
     }
   }
 
   private async generateNewCast() {
-    logger.info('Generating new cast');
+    this.runtime.logger.info('Generating new cast');
     try {
       const worldId = createUniqueUuid(this.runtime, this.fid.toString());
       const roomId = createUniqueUuid(this.runtime, `${this.fid}-home`);
@@ -103,7 +103,7 @@ export class FarcasterCastManager {
         source: FARCASTER_SOURCE,
       });
     } catch (error) {
-      logger.error(`Error generating new cast: ${JSON.stringify(error)}`);
+      this.runtime.logger.error({ error }, '[Farcaster] Error generating new cast');
     }
   }
 }

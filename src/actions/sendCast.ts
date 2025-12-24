@@ -55,14 +55,14 @@ export const sendCastAction: Action = {
     return hasKeyword && isServiceAvailable;
   },
 
-  handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<boolean> => {
+  handler: async (runtime: IAgentRuntime, message: Memory, state?: State): Promise<void> => {
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as FarcasterService;
       const postService = service?.getCastService(runtime.agentId);
 
       if (!postService) {
-        logger.error('[SEND_CAST] PostService not available');
-        return false;
+        runtime.logger.error('[SEND_CAST] PostService not available');
+        return;
       }
 
       // Extract the content to post from the message or generate it
@@ -112,11 +112,8 @@ export const sendCastAction: Action = {
         },
         'messages'
       );
-
-      return true;
     } catch (error) {
-      logger.error('[SEND_CAST] Error posting cast:', error);
-      // Re-throw the error so it's visible in the agent's logs
+      runtime.logger.error('[SEND_CAST] Error posting cast:', typeof error === 'string' ? error : (error as Error).message);
       throw error;
     }
   },

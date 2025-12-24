@@ -94,3 +94,21 @@ export interface FarcasterGenericCastPayload extends Omit<MessagePayload, 'messa
   memory: Memory;
   cast: NeynarCast;
 }
+
+/**
+ * Neynar webhook data structure for cast events
+ */
+export interface NeynarWebhookData {
+  type: string;
+  data?: {
+    hash: string;
+    text?: string;
+    author: {
+      fid: number;
+      username?: string;
+    };
+    mentioned_profiles?: Array<{ fid: number }>;
+    parent_hash?: string;
+    parent_author?: { fid: number };
+  };
+}

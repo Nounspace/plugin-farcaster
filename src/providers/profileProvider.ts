@@ -19,6 +19,7 @@ export const farcasterProfileProvider: Provider = {
       const managers = service?.getActiveManagers();
 
       if (!managers || managers.size === 0) {
+        runtime.logger.debug('[FarcasterProfileProvider] No managers available');
         return {
           text: 'Farcaster profile not available.',
           data: { available: false },
@@ -27,6 +28,7 @@ export const farcasterProfileProvider: Provider = {
 
       const manager = managers.get(runtime.agentId);
       if (!manager) {
+        runtime.logger.debug('[FarcasterProfileProvider] No manager for this agent');
         return {
           text: 'Farcaster profile not available for this agent.',
           data: { available: false },
@@ -35,6 +37,7 @@ export const farcasterProfileProvider: Provider = {
 
       const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string, 10);
       if (!fid || isNaN(fid)) {
+        runtime.logger.warn('[FarcasterProfileProvider] Invalid or missing FARCASTER_FID');
         return {
           text: 'Invalid Farcaster FID configured.',
           data: { available: false, error: 'Invalid FID' },
@@ -59,14 +62,14 @@ export const farcasterProfileProvider: Provider = {
           },
         };
       } catch (error) {
-        logger.error('[FarcasterProfileProvider] Error fetching profile:', error);
+        runtime.logger.error('[FarcasterProfileProvider] Error fetching profile:', typeof error === 'string' ? error : (error as Error).message);
         return {
           text: 'Unable to fetch Farcaster profile at this time.',
           data: { available: false, error: 'Fetch failed' },
         };
       }
     } catch (error) {
-      logger.error('[FarcasterProfileProvider] Error:', error);
+      runtime.logger.error('[FarcasterProfileProvider] Error:', typeof error === 'string' ? error : (error as Error).message);
       return {
         text: 'Farcaster service is not available.',
         data: { available: false },
