@@ -1,4 +1,4 @@
-import { logger, type IAgentRuntime } from '@elizaos/core';
+import { type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import type { FarcasterConfig, NeynarWebhookData } from '../common/types';
 import type { IInteractionProcessor } from './interaction-processor';
@@ -39,7 +39,7 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
   private timeout: ReturnType<typeof setTimeout> | undefined;
 
   async start(): Promise<void> {
-    logger.info('Starting Farcaster polling mode');
+    this.runtime.logger.info('Starting Farcaster polling mode');
     if (this.isRunning) {
       return;
     }
@@ -49,7 +49,7 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
   }
 
   async stop(): Promise<void> {
-    logger.info('Stopping Farcaster polling mode');
+    this.runtime.logger.info('Stopping Farcaster polling mode');
     if (this.timeout) clearTimeout(this.timeout);
     this.isRunning = false;
   }
@@ -109,17 +109,17 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
  */
 export class FarcasterWebhookSource extends FarcasterInteractionSource {
   async start(): Promise<void> {
-    logger.info('Starting Farcaster webhook mode');
+    this.runtime.logger.info('Starting Farcaster webhook mode');
     if (this.isRunning) {
       return;
     }
 
     this.isRunning = true;
-    logger.info('Webhook source is active - waiting for webhook events');
+    this.runtime.logger.info('Webhook source is active - waiting for webhook events');
   }
 
   async stop(): Promise<void> {
-    logger.info('Stopping Farcaster webhook mode');
+    this.runtime.logger.info('Stopping Farcaster webhook mode');
     this.isRunning = false;
   }
 
@@ -128,7 +128,7 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
    */
   async processWebhookData(webhookData: NeynarWebhookData): Promise<void> {
     if (!this.isRunning) {
-      logger.warn('Webhook source is not running, ignoring webhook data');
+      this.runtime.logger.warn('Webhook source is not running, ignoring webhook data');
       return;
     }
 

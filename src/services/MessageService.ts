@@ -1,5 +1,6 @@
 import { type UUID, createUniqueUuid } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
+import { getFarcasterFid } from '../common/config';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
 import { FarcasterMessageType, FarcasterEventTypes } from '../common/types';
@@ -76,9 +77,8 @@ export class FarcasterMessageService implements IMessageService {
       const { agentId, roomId, limit = 20 } = options;
 
       // Get mentions and timeline
-      const fidStr = this.runtime.getSetting('FARCASTER_FID');
-      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
-      if (!fid || isNaN(fid)) {
+      const fid = getFarcasterFid(this.runtime);
+      if (!fid) {
         this.runtime.logger.error('[Farcaster] FARCASTER_FID is not configured');
         return [];
       }
@@ -113,9 +113,8 @@ export class FarcasterMessageService implements IMessageService {
         // Extract cast hash from the message ID (which is a UUID)
         // In a real implementation, you'd need to maintain a mapping or extract from metadata
         const parentHash = options.metadata?.parentHash || replyToId;
-        const fidStr = this.runtime.getSetting('FARCASTER_FID');
-        const fid = fidStr ? parseInt(fidStr, 10) : NaN;
-        if (!fid || isNaN(fid)) {
+        const fid = getFarcasterFid(this.runtime);
+        if (!fid) {
           throw new Error('FARCASTER_FID is not configured');
         }
         inReplyTo = {

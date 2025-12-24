@@ -1,11 +1,11 @@
 import {
-  logger,
   type IAgentRuntime,
   type UUID,
   ModelType,
   createUniqueUuid,
 } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
+import { getFarcasterFid } from '../common/config';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
 import type { Cast } from '../common/types';
@@ -68,10 +68,9 @@ export class FarcasterCastService implements CastServiceInterface {
     cursor?: string;
   }): Promise<FarcasterCast[]> {
     try {
-      const fidStr = this.runtime.getSetting('FARCASTER_FID');
-      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
-      if (!fid || isNaN(fid)) {
-        logger.error('FARCASTER_FID is not configured');
+      const fid = getFarcasterFid(this.runtime);
+      if (!fid) {
+        this.runtime.logger.error('FARCASTER_FID is not configured');
         return [];
       }
 
@@ -82,7 +81,7 @@ export class FarcasterCastService implements CastServiceInterface {
 
       return timeline.map((cast) => this.castToFarcasterCast(cast, params.agentId));
     } catch (error) {
-      logger.error(`Failed to get casts: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to get casts: ${JSON.stringify({ params, error })}`);
       return [];
     }
   }
@@ -149,7 +148,7 @@ export class FarcasterCastService implements CastServiceInterface {
 
       return farcasterCast;
     } catch (error) {
-      logger.error(`Failed to create cast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to create cast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -160,9 +159,9 @@ export class FarcasterCastService implements CastServiceInterface {
   async deleteCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
       // Farcaster doesn't support deleting casts via API
-      logger.warn(`Cast deletion is not supported by the Farcaster API: ${JSON.stringify({ castHash: params.castHash })}`);
+      this.runtime.logger.warn(`Cast deletion is not supported by the Farcaster API: ${JSON.stringify({ castHash: params.castHash })}`);
     } catch (error) {
-      logger.error(`Failed to delete cast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to delete cast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -173,12 +172,12 @@ export class FarcasterCastService implements CastServiceInterface {
   async likeCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
       // TODO: Implement like functionality when Neynar API supports it
-      logger.info(`Like functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
+      this.runtime.logger.info(`Like functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
 
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.likeCast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error(`Failed to like cast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to like cast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -189,12 +188,12 @@ export class FarcasterCastService implements CastServiceInterface {
   async unlikeCast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
       // TODO: Implement unlike functionality when Neynar API supports it
-      logger.info(`Unlike functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
+      this.runtime.logger.info(`Unlike functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
 
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.unlikeCast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error(`Failed to unlike cast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to unlike cast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -205,12 +204,12 @@ export class FarcasterCastService implements CastServiceInterface {
   async recast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
       // TODO: Implement recast functionality when Neynar API supports it
-      logger.info(`Recast functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
+      this.runtime.logger.info(`Recast functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
 
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.recast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error(`Failed to recast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to recast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -221,12 +220,12 @@ export class FarcasterCastService implements CastServiceInterface {
   async unrecast(params: { agentId: UUID; castHash: string }): Promise<void> {
     try {
       // TODO: Implement unrecast functionality when Neynar API supports it
-      logger.info(`Remove recast functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
+      this.runtime.logger.info(`Remove recast functionality not yet implemented for cast: ${JSON.stringify({ castHash: params.castHash })}`);
 
       // In a full implementation, this would call the Neynar API
       // await this.client.neynar.unrecast({ signerUuid, castHash: params.castHash });
     } catch (error) {
-      logger.error(`Failed to remove recast: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to remove recast: ${JSON.stringify({ params, error })}`);
       throw error;
     }
   }
@@ -236,10 +235,9 @@ export class FarcasterCastService implements CastServiceInterface {
    */
   async getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]> {
     try {
-      const fidStr = this.runtime.getSetting('FARCASTER_FID');
-      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
-      if (!fid || isNaN(fid)) {
-        logger.error('FARCASTER_FID is not configured');
+      const fid = getFarcasterFid(this.runtime);
+      if (!fid) {
+        this.runtime.logger.error('FARCASTER_FID is not configured');
         return [];
       }
 
@@ -253,7 +251,7 @@ export class FarcasterCastService implements CastServiceInterface {
         return this.castToFarcasterCast(cast, params.agentId);
       });
     } catch (error) {
-      logger.error(`Failed to get mentions: ${JSON.stringify({ params, error })}`);
+      this.runtime.logger.error(`Failed to get mentions: ${JSON.stringify({ params, error })}`);
       return [];
     }
   }
@@ -272,7 +270,7 @@ export class FarcasterCastService implements CastServiceInterface {
 
       return response as string;
     } catch (error) {
-      logger.error(`Failed to generate cast content: ${JSON.stringify({ error })}`);
+      this.runtime.logger.error(`Failed to generate cast content: ${JSON.stringify({ error })}`);
       return 'Hello Farcaster! 👋';
     }
   }
@@ -298,7 +296,7 @@ export class FarcasterCastService implements CastServiceInterface {
 
       return truncated;
     } catch (error) {
-      logger.error(`Failed to truncate cast: ${JSON.stringify({ error })}`);
+      this.runtime.logger.error(`Failed to truncate cast: ${JSON.stringify({ error })}`);
       return text.substring(0, 317) + '...';
     }
   }
@@ -333,10 +331,10 @@ export class FarcasterCastService implements CastServiceInterface {
       ) {
         await (this.runtime as any).memory.create(memory);
       } else {
-        logger.warn('Memory storage method not available in runtime');
+        this.runtime.logger.warn('Memory storage method not available in runtime');
       }
     } catch (error) {
-      logger.error(`Failed to store cast in memory: ${JSON.stringify({ error })}`);
+      this.runtime.logger.error(`Failed to store cast in memory: ${JSON.stringify({ error })}`);
     }
   }
 

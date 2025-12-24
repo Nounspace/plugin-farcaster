@@ -1,4 +1,4 @@
-import { logger, type IAgentRuntime } from '@elizaos/core';
+import { type IAgentRuntime } from '@elizaos/core';
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { FarcasterClient } from '../client';
 import { type FarcasterConfig } from '../common/types';
@@ -27,7 +27,7 @@ export class FarcasterAgentManager {
 
     this.client = client;
 
-    logger.success('Farcaster Neynar client initialized.');
+    runtime.logger.success('Farcaster Neynar client initialized.');
 
     // Initialize managers
     this.interactions = new FarcasterInteractionManager({ client, runtime, config });

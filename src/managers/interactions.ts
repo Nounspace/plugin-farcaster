@@ -5,7 +5,6 @@ import {
   EventPayload,
   EventType,
   type IAgentRuntime,
-  logger,
   type Memory,
   MessagePayload,
   ModelType,
@@ -65,7 +64,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       processor: this
     });
 
-    logger.info(`Farcaster interaction mode: ${this.mode}`);
+    this.runtime.logger.info(`Farcaster interaction mode: ${this.mode}`);
   }
 
   /**
@@ -96,7 +95,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
    */
   async processWebhookData(webhookData: NeynarWebhookData): Promise<void> {
     if (webhookData.type !== 'cast.created' || !webhookData.data) {
-      logger.debug('Ignoring non-cast webhook event:', webhookData.type);
+      this.runtime.logger.debug('Ignoring non-cast webhook event:', webhookData.type);
       return;
     }
 
@@ -105,20 +104,20 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
     // Validate required cast data structure
     if (!castData.author || !castData.hash || typeof castData.author.fid !== 'number') {
-      logger.warn('Invalid webhook cast data structure - missing author, hash, or author.fid');
+      this.runtime.logger.warn('Invalid webhook cast data structure - missing author, hash, or author.fid');
       return;
     }
 
     // Skip if it's from the agent itself
     if (castData.author.fid === agentFid) {
-      logger.debug('Skipping webhook event from agent itself');
+      this.runtime.logger.debug('Skipping webhook event from agent itself');
       return;
     }
 
     // Deduplication check - skip if already processed
     const memoryId = castUuid({ agentId: this.runtime.agentId, hash: castData.hash });
     if (await this.runtime.getMemoryById(memoryId)) {
-      logger.debug('Skipping already processed webhook cast:', castData.hash);
+      this.runtime.logger.debug('Skipping already processed webhook cast:', castData.hash);
       return;
     }
 
@@ -131,14 +130,14 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     if (isMention) {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
-      logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
+      this.runtime.logger.info(`Processing webhook MENTION from @${username}: "${text}"`);
 
       try {
         // Fetch the proper NeynarCast object using the cast hash
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processMention(neynarCast);
       } catch (error) {
-        logger.error(
+        this.runtime.logger.error(
           { agentId: this.runtime.agentId, error },
           'Failed to process webhook mention from @' + username
         );
@@ -146,7 +145,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     } else if (isReply) {
       const username = castData.author.username || 'unknown';
       const text = castData.text || '';
-      logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
+      this.runtime.logger.info(`Processing webhook REPLY from @${username}: "${text}"`);
 
       try {
         // Fetch the proper NeynarCast object using the cast hash
@@ -156,7 +155,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         this.runtime.logger.error({ error }, `Failed to process webhook reply from @${username}:`);
       }
     } else {
-      logger.debug('Webhook cast is neither mention nor reply to agent');
+      this.runtime.logger.debug('Webhook cast is neither mention nor reply to agent');
     }
   }
 
@@ -231,7 +230,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const memory = await runtime.getMemoryById(memoryId);
 
       if (!memory) {
-        logger.info({ hash: currentCast.hash }, 'Creating memory for cast');
+        runtime.logger.info({ hash: currentCast.hash }, 'Creating memory for cast');
         const newMemory = await self.ensureCastConnection(currentCast);
         await runtime.createMemory(newMemory, 'messages');
         runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED as string, {
@@ -264,7 +263,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     mention: Cast;
   }): Promise<void> {
     if (mention.profile.fid === agent.fid) {
-      logger.info({ hash: mention.hash }, 'skipping cast from bot itself');
+      this.runtime.logger.info({ hash: mention.hash }, 'skipping cast from bot itself');
       return;
     }
 
@@ -276,7 +275,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     );
 
     if (!memory.content.text || memory.content.text.trim() === '') {
-      logger.info({ hash: mention.hash }, 'skipping cast with no text');
+      this.runtime.logger.info({ hash: mention.hash }, 'skipping cast with no text');
       return;
     }
 
@@ -295,7 +294,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     // Call messageService directly - it handles shouldRespond evaluation and action processing
     try {
       if (!this.runtime.messageService) {
-        logger.warn('[Farcaster] messageService not available, skipping mention handling');
+        this.runtime.logger.warn('[Farcaster] messageService not available, skipping mention handling');
         return;
       }
       await this.runtime.messageService.handleMessage(
@@ -304,7 +303,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         callback
       );
     } catch (error) {
-      logger.error(
+      this.runtime.logger.error(
         {
           error: error instanceof Error ? error.message : String(error),
           castHash: mention.hash,
@@ -328,7 +327,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
    * Start the interaction manager (delegates to the appropriate source)
    */
   async start(): Promise<void> {
-    logger.info(`Starting Farcaster interaction manager in ${this.mode} mode`);
+    this.runtime.logger.info(`Starting Farcaster interaction manager in ${this.mode} mode`);
     await this.source.start();
   }
 
@@ -336,7 +335,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
    * Stop the interaction manager
    */
   async stop(): Promise<void> {
-    logger.info('Stopping Farcaster interaction manager');
+    this.runtime.logger.info('Stopping Farcaster interaction manager');
     await this.source.stop();
   }
 
