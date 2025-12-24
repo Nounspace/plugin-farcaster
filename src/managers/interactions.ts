@@ -1,6 +1,5 @@
 import {
   ChannelType,
-  composePromptFromState,
   Content,
   createUniqueUuid,
   EventPayload,
