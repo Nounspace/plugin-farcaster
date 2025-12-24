@@ -68,8 +68,15 @@ export class FarcasterCastService implements CastServiceInterface {
     cursor?: string;
   }): Promise<FarcasterCast[]> {
     try {
+      const fidStr = this.runtime.getSetting('FARCASTER_FID');
+      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
+      if (!fid || isNaN(fid)) {
+        logger.error('FARCASTER_FID is not configured');
+        return [];
+      }
+
       const { timeline } = await this.client.getTimeline({
-        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        fid,
         pageSize: params.limit || 50,
       });
 
@@ -229,8 +236,15 @@ export class FarcasterCastService implements CastServiceInterface {
    */
   async getMentions(params: { agentId: UUID; limit?: number }): Promise<FarcasterCast[]> {
     try {
+      const fidStr = this.runtime.getSetting('FARCASTER_FID');
+      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
+      if (!fid || isNaN(fid)) {
+        logger.error('FARCASTER_FID is not configured');
+        return [];
+      }
+
       const mentions = await this.client.getMentions({
-        fid: (this.runtime as any).config?.FARCASTER_FID || (this.runtime as any).settings?.FARCASTER_FID,
+        fid,
         pageSize: params.limit || 20,
       });
 

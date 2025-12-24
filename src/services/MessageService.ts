@@ -76,10 +76,15 @@ export class FarcasterMessageService implements IMessageService {
       const { agentId, roomId, limit = 20 } = options;
 
       // Get mentions and timeline
+      const fidStr = this.runtime.getSetting('FARCASTER_FID');
+      const fid = fidStr ? parseInt(fidStr, 10) : NaN;
+      if (!fid || isNaN(fid)) {
+        this.runtime.logger.error('[Farcaster] FARCASTER_FID is not configured');
+        return [];
+      }
+
       const { timeline } = await this.client.getTimeline({
-        fid: parseInt(
-          this.runtime.getSetting('FARCASTER_FID') || this.runtime.config.FARCASTER_FID
-        ),
+        fid,
         pageSize: limit,
       });
 
@@ -108,11 +113,14 @@ export class FarcasterMessageService implements IMessageService {
         // Extract cast hash from the message ID (which is a UUID)
         // In a real implementation, you'd need to maintain a mapping or extract from metadata
         const parentHash = options.metadata?.parentHash || replyToId;
+        const fidStr = this.runtime.getSetting('FARCASTER_FID');
+        const fid = fidStr ? parseInt(fidStr, 10) : NaN;
+        if (!fid || isNaN(fid)) {
+          throw new Error('FARCASTER_FID is not configured');
+        }
         inReplyTo = {
           hash: parentHash as string,
-          fid: parseInt(
-            this.runtime.getSetting('FARCASTER_FID') || this.runtime.config.FARCASTER_FID
-          ),
+          fid,
         };
       }
 
