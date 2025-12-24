@@ -137,7 +137,10 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processMention(neynarCast);
       } catch (error) {
-        logger.error({ agentId: this.runtime.agentId, error }, '[Farcaster] Error in periodic interactions:');
+        logger.error(
+          { agentId: this.runtime.agentId, error },
+          'Failed to process webhook mention from @' + username
+        );
       }
     } else if (isReply) {
       const username = castData.author.username || 'unknown';
