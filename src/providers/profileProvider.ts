@@ -6,6 +6,7 @@ import {
   type ProviderResult,
   logger,
 } from '@elizaos/core';
+import { getFarcasterFid } from '../common/config';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import type { FarcasterService } from '../service';
 
@@ -35,8 +36,8 @@ export const farcasterProfileProvider: Provider = {
         };
       }
 
-      const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string, 10);
-      if (!fid || isNaN(fid)) {
+      const fid = getFarcasterFid(runtime);
+      if (!fid) {
         runtime.logger.warn('[FarcasterProfileProvider] Invalid or missing FARCASTER_FID');
         return {
           text: 'Invalid Farcaster FID configured.',

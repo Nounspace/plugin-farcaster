@@ -6,7 +6,7 @@ import {
   logger,
   type TestCase,
 } from '@elizaos/core';
-import { hasFarcasterEnabled } from '../common/config';
+import { getFarcasterFid, hasFarcasterEnabled } from '../common/config';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import { FidRequest, FarcasterMessageType } from '../common/types';
 import { FarcasterAgentManager } from '../managers/agent';
@@ -210,8 +210,8 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('FarcasterAgentManager not initialized');
       }
 
-      const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string, 10);
-      if (!fid || isNaN(fid)) {
+      const fid = getFarcasterFid(runtime);
+      if (!fid) {
         throw new Error('Invalid FID in settings.');
       }
 
@@ -238,8 +238,8 @@ export class FarcasterTestSuite implements TestSuite {
         throw new Error('FarcasterAgentManager not initialized');
       }
 
-      const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string, 10);
-      if (!fid || isNaN(fid)) {
+      const fid = getFarcasterFid(runtime);
+      if (!fid) {
         throw new Error('Invalid FID in settings.');
       }
 

@@ -14,25 +14,31 @@ function safeParseInt(value: string | undefined | null, defaultValue: number): n
   return Number.isNaN(parsed) ? defaultValue : Math.max(1, parsed);
 }
 
+/**
+ * Gets the Farcaster FID from runtime settings.
+ * Uses getSetting which already prioritizes: character.secrets -> character.settings -> env vars
+ */
+export function getFarcasterFid(runtime: IAgentRuntime): number | null {
+  const fidStr = runtime.getSetting('FARCASTER_FID');
+  if (!fidStr) return null;
+  const fid = Number.parseInt(fidStr as string, 10);
+  return Number.isNaN(fid) ? null : fid;
+}
+
+/**
+ * Checks if Farcaster is properly configured for this runtime.
+ * getSetting already handles priority: character.secrets -> character.settings -> env vars
+ */
 export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
-  const fid =
-    runtime.character.settings?.FARCASTER_FID ||
-    runtime.getSetting('FARCASTER_FID') ||
-    process.env.FARCASTER_FID;
-  const neynarSignerUuid =
-    runtime.getSetting('secrets.FARCASTER_SIGNER_UUID') ||
-    runtime.getSetting('FARCASTER_SIGNER_UUID') ||
-    process.env.FARCASTER_SIGNER_UUID;
-  const neynarApiKey =
-    runtime.getSetting('secrets.FARCASTER_NEYNAR_API_KEY') ||
-    runtime.getSetting('FARCASTER_NEYNAR_API_KEY') ||
-    process.env.FARCASTER_NEYNAR_API_KEY;
+  const fid = runtime.getSetting('FARCASTER_FID');
+  const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
+  const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
 
   logger.debug(`[hasFarcasterEnabled] FID: ${fid ? 'Found' : 'Missing'}`);
-  logger.debug(`[hasFarcasterEnabled] Signer UUID: ${neynarSignerUuid ? 'Found' : 'Missing'}`);
-  logger.debug(`[hasFarcasterEnabled] API Key: ${neynarApiKey ? 'Found' : 'Missing'}`);
+  logger.debug(`[hasFarcasterEnabled] Signer UUID: ${signerUuid ? 'Found' : 'Missing'}`);
+  logger.debug(`[hasFarcasterEnabled] API Key: ${apiKey ? 'Found' : 'Missing'}`);
 
-  return fid && neynarSignerUuid && neynarApiKey;
+  return !!(fid && signerUuid && apiKey);
 }
 
 /**
@@ -46,11 +52,7 @@ export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
  * @throws {Error} If configuration validation fails, with details about each invalid field.
  */
 export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig {
-  const fid = Number.parseInt(
-    runtime.character.settings?.FARCASTER_FID ||
-    runtime.getSetting('FARCASTER_FID') ||
-    process.env.FARCASTER_FID
-  );
+  const fid = getFarcasterFid(runtime);
 
   try {
     const farcasterConfig = {
@@ -58,15 +60,15 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         runtime.getSetting('FARCASTER_DRY_RUN') ||
         parseBooleanFromText(process.env.FARCASTER_DRY_RUN || 'false'),
 
-      FARCASTER_FID: Number.isNaN(fid) ? undefined : fid,
+      FARCASTER_FID: fid ?? undefined,
 
       MAX_CAST_LENGTH: safeParseInt(
-        runtime.getSetting('MAX_CAST_LENGTH') || process.env.MAX_CAST_LENGTH,
+        runtime.getSetting('MAX_CAST_LENGTH') as string,
         DEFAULT_MAX_CAST_LENGTH
       ),
 
       FARCASTER_POLL_INTERVAL: safeParseInt(
-        runtime.getSetting('FARCASTER_POLL_INTERVAL') || process.env.FARCASTER_POLL_INTERVAL,
+        runtime.getSetting('FARCASTER_POLL_INTERVAL') as string,
         DEFAULT_POLL_INTERVAL
       ),
 
@@ -75,12 +77,12 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         parseBooleanFromText(process.env.ENABLE_CAST || 'true'),
 
       CAST_INTERVAL_MIN: safeParseInt(
-        runtime.getSetting('CAST_INTERVAL_MIN') || process.env.CAST_INTERVAL_MIN,
+        runtime.getSetting('CAST_INTERVAL_MIN') as string,
         DEFAULT_CAST_INTERVAL_MIN
       ),
 
       CAST_INTERVAL_MAX: safeParseInt(
-        runtime.getSetting('CAST_INTERVAL_MAX') || process.env.CAST_INTERVAL_MAX,
+        runtime.getSetting('CAST_INTERVAL_MAX') as string,
         DEFAULT_CAST_INTERVAL_MAX
       ),
 
@@ -89,7 +91,7 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         parseBooleanFromText(process.env.ENABLE_ACTION_PROCESSING || 'false'),
 
       ACTION_INTERVAL: safeParseInt(
-        runtime.getSetting('ACTION_INTERVAL') || process.env.ACTION_INTERVAL,
+        runtime.getSetting('ACTION_INTERVAL') as string,
         5
       ), // 5 minutes
 
@@ -98,30 +100,19 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         parseBooleanFromText(process.env.CAST_IMMEDIATELY || 'false'),
 
       MAX_ACTIONS_PROCESSING: safeParseInt(
-        runtime.getSetting('MAX_ACTIONS_PROCESSING') || process.env.MAX_ACTIONS_PROCESSING,
+        runtime.getSetting('MAX_ACTIONS_PROCESSING') as string,
         1
       ),
 
-      FARCASTER_SIGNER_UUID:
-        runtime.getSetting('secrets.FARCASTER_SIGNER_UUID') ||
-        runtime.getSetting('FARCASTER_SIGNER_UUID') ||
-        process.env.FARCASTER_SIGNER_UUID,
+      FARCASTER_SIGNER_UUID: runtime.getSetting('FARCASTER_SIGNER_UUID'),
 
-      FARCASTER_NEYNAR_API_KEY:
-        runtime.getSetting('secrets.FARCASTER_NEYNAR_API_KEY') ||
-        runtime.getSetting('FARCASTER_NEYNAR_API_KEY') ||
-        process.env.FARCASTER_NEYNAR_API_KEY,
+      FARCASTER_NEYNAR_API_KEY: runtime.getSetting('FARCASTER_NEYNAR_API_KEY'),
 
       FARCASTER_HUB_URL:
-        runtime.getSetting('FARCASTER_HUB_URL') ||
-        process.env.FARCASTER_HUB_URL ||
-        'hub.pinata.cloud',
+        runtime.getSetting('FARCASTER_HUB_URL') || 'hub.pinata.cloud',
       
       // Webhook configuration
-      FARCASTER_MODE: 
-        runtime.getSetting('FARCASTER_MODE') || 
-        process.env.FARCASTER_MODE || 
-        'polling',
+      FARCASTER_MODE: runtime.getSetting('FARCASTER_MODE') || 'polling',
     };
 
     logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);

@@ -1,4 +1,5 @@
 import { type IAgentRuntime, logger, createUniqueUuid, type TestCase } from '@elizaos/core';
+import { getFarcasterFid } from '../../common/config.js';
 import { FARCASTER_SERVICE_NAME } from '../../common/constants.js';
 import type { FarcasterService } from '../../service.js';
 import { FarcasterMessageType } from '../../common/types.js';
@@ -39,7 +40,10 @@ export const farcasterE2EScenarios: TestCase[] = [
         throw new Error('Manager not found for agent');
       }
 
-      const fid = parseInt(runtime.getSetting('FARCASTER_FID') as string);
+      const fid = getFarcasterFid(runtime);
+      if (!fid) {
+        throw new Error('FARCASTER_FID not configured');
+      }
       const profile = await manager.client.getProfile(fid);
 
       if (!profile || profile.fid !== fid) {

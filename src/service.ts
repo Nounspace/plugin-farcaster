@@ -1,7 +1,7 @@
 import { logger, Service, UUID, type IAgentRuntime } from '@elizaos/core';
 import { FARCASTER_SERVICE_NAME } from './common/constants';
 import { FarcasterAgentManager } from './managers/agent';
-import { hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
+import { getFarcasterFid, hasFarcasterEnabled, validateFarcasterConfig } from './common/config';
 import { FarcasterMessageService } from './services/MessageService';
 import { FarcasterCastService } from './services/CastService';
 
@@ -116,9 +116,11 @@ export class FarcasterService extends Service {
     for (const [agentId, manager] of Array.from(this.managers.entries())) {
       try {
         // Check if manager client is responsive
-        const profile = await manager.client.getProfile(
-          parseInt(manager.runtime.getSetting('FARCASTER_FID') as string)
-        );
+        const fid = getFarcasterFid(manager.runtime);
+        if (!fid) {
+          throw new Error('FARCASTER_FID not configured');
+        }
+        const profile = await manager.client.getProfile(fid);
         managerStatuses[agentId] = {
           status: 'healthy',
           fid: profile.fid,
