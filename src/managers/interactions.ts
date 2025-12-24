@@ -3,6 +3,7 @@ import {
   composePromptFromState,
   Content,
   createUniqueUuid,
+  EventPayload,
   EventType,
   type IAgentRuntime,
   logger,
@@ -10,6 +11,7 @@ import {
   MessagePayload,
   ModelType,
   parseKeyValueXml,
+  stringToUuid,
   UUID,
 } from '@elizaos/core';
 import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
@@ -136,7 +138,6 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processMention(neynarCast);
       } catch (error) {
-        //logger.error(`Failed to process webhook mention from @${username}:`, error instanceof Error ? error.message : String(error));
         logger.error({ agentId: this.runtime.agentId, error }, '[Farcaster] Error in periodic interactions:');
       }
     } else if (isReply) {
@@ -149,7 +150,6 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processReply(neynarCast);
       } catch (error) {
-        //logger.error(`Failed to process webhook reply from @${username}:`, error instanceof Error ? error.message : String(error));
         logger.error({ error }, `Failed to process webhook reply from @${username}:`);
       }
     } else {
@@ -163,7 +163,6 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
       const conversationId = cast.threadId ?? cast.inReplyTo?.hash ?? cast.hash;
       const entityId = createUniqueUuid(this.runtime, cast.authorFid.toString());
       const worldId = createUniqueUuid(this.runtime, cast.authorFid.toString());
-      const serverId = cast.authorFid.toString();
       const roomId = createUniqueUuid(this.runtime, conversationId);
 
       if (entityId !== this.runtime.agentId) {
@@ -176,7 +175,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
           source: FARCASTER_SOURCE,
           type: ChannelType.THREAD,
           channelId: conversationId,
-          serverId,
+          messageServerId: stringToUuid(cast.authorFid.toString()),
           worldId,
           metadata: {
             ownership: { ownerId: cast.authorFid.toString() },
@@ -230,14 +229,14 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
       if (!memory) {
         logger.info({ hash: currentCast.hash }, 'Creating memory for cast');
-        const memory = await self.ensureCastConnection(currentCast);
-        await runtime.createMemory(memory, 'messages');
-        runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED, {
+        const newMemory = await self.ensureCastConnection(currentCast);
+        await runtime.createMemory(newMemory, 'messages');
+        runtime.emitEvent(FarcasterEventTypes.THREAD_CAST_CREATED as string, {
           runtime,
-          memory,
+          memory: newMemory,
           cast: currentCast,
           source: FARCASTER_SOURCE,
-        });
+        }  as EventPayload);
       }
 
       thread.unshift(currentCast);
@@ -292,6 +291,10 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
 
     // Call messageService directly - it handles shouldRespond evaluation and action processing
     try {
+      if (!this.runtime.messageService) {
+        logger.warn('[Farcaster] messageService not available, skipping mention handling');
+        return;
+      }
       await this.runtime.messageService.handleMessage(
         this.runtime,
         memory,

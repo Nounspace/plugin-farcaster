@@ -104,7 +104,6 @@ export class FarcasterCastManager {
       });
     } catch (error) {
       logger.error(`Error generating new cast: ${JSON.stringify(error)}`);
-      //logger.error({ error },'Error generating new cast:');
     }
   }
 }

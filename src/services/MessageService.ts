@@ -141,7 +141,6 @@ export class FarcasterMessageService implements IMessageService {
       return message;
     } catch (error) {
       logger.error(`[Farcaster] Error sending message: ${JSON.stringify(error)}`);
-      //logger.error({ error }, '[Farcaster] Error sending message:');
       throw error;
     }
   }
@@ -163,7 +162,6 @@ export class FarcasterMessageService implements IMessageService {
       return this.castToMessage(farcasterCast, agentId);
     } catch (error) {
       logger.error(`[Farcaster] Error fetching message: ${JSON.stringify(error)}`);
-      //logger.error({ error },'[Farcaster] Error fetching message:');
       return null;
     }
   }
