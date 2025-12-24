@@ -1,4 +1,4 @@
-import { type UUID, logger, createUniqueUuid } from '@elizaos/core';
+import { type UUID, createUniqueUuid } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { FARCASTER_SOURCE } from '../common/constants';
@@ -94,7 +94,7 @@ export class FarcasterMessageService implements IMessageService {
 
       return messages;
     } catch (error) {
-      logger.error(`[Farcaster] Error fetching messages: ${JSON.stringify(error)}`);
+      this.runtime.logger.error({ error }, '[Farcaster] Error fetching messages');
       return [];
     }
   }
@@ -140,14 +140,14 @@ export class FarcasterMessageService implements IMessageService {
 
       return message;
     } catch (error) {
-      logger.error(`[Farcaster] Error sending message: ${JSON.stringify(error)}`);
+      this.runtime.logger.error({ error }, '[Farcaster] Error sending message');
       throw error;
     }
   }
 
   async deleteMessage(messageId: string, agentId: UUID): Promise<void> {
     // Farcaster doesn't support deleting casts via API
-    logger.warn('[Farcaster] Cast deletion is not supported by the Farcaster API');
+    this.runtime.logger.warn('[Farcaster] Cast deletion is not supported by the Farcaster API');
   }
 
   async getMessage(messageId: string, agentId: UUID): Promise<Message | null> {
@@ -161,7 +161,7 @@ export class FarcasterMessageService implements IMessageService {
 
       return this.castToMessage(farcasterCast, agentId);
     } catch (error) {
-      logger.error(`[Farcaster] Error fetching message: ${JSON.stringify(error)}`);
+      this.runtime.logger.error({ error }, '[Farcaster] Error fetching message');
       return null;
     }
   }
@@ -186,13 +186,13 @@ export class FarcasterMessageService implements IMessageService {
 
       return thread;
     } catch (error) {
-      logger.error(`[Farcaster] Error fetching thread: ${JSON.stringify(error)}`);
+      this.runtime.logger.error({ error }, '[Farcaster] Error fetching thread');
       return [];
     }
   }
 
   async markAsRead(messageIds: string[], agentId: UUID): Promise<void> {
     // Farcaster doesn't have a read/unread concept
-    logger.debug('[Farcaster] Mark as read is not applicable for Farcaster casts');
+    this.runtime.logger.debug('[Farcaster] Mark as read is not applicable for Farcaster casts');
   }
 }

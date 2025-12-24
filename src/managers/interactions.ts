@@ -23,6 +23,7 @@ import {
   type FarcasterConfig,
   FarcasterEventTypes,
   FarcasterGenericCastPayload,
+  type NeynarWebhookData,
   type Profile,
 } from '../common/types';
 import { castUuid, neynarCastToCast } from '../common/utils';
@@ -93,7 +94,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
   /**
    * Process webhook data from Neynar
    */
-  async processWebhookData(webhookData: any): Promise<void> {
+  async processWebhookData(webhookData: NeynarWebhookData): Promise<void> {
     if (webhookData.type !== 'cast.created' || !webhookData.data) {
       logger.debug('Ignoring non-cast webhook event:', webhookData.type);
       return;
@@ -152,7 +153,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         const neynarCast = await this.client.getCast(castData.hash);
         await this.processReply(neynarCast);
       } catch (error) {
-        logger.error({ error }, `Failed to process webhook reply from @${username}:`);
+        this.runtime.logger.error({ error }, `Failed to process webhook reply from @${username}:`);
       }
     } else {
       logger.debug('Webhook cast is neither mention nor reply to agent');

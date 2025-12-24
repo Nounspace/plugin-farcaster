@@ -1,6 +1,6 @@
 import { logger, type IAgentRuntime } from '@elizaos/core';
 import type { FarcasterClient } from '../client';
-import type { FarcasterConfig } from '../common/types';
+import type { FarcasterConfig, NeynarWebhookData } from '../common/types';
 import type { IInteractionProcessor } from './interaction-processor';
 import { neynarCastToCast, castUuid } from '../common/utils';
 
@@ -85,7 +85,7 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
           continue;
         }
 
-        logger.info({ hash: mention.hash }, 'New Cast found');
+        this.runtime.logger.info({ hash: mention.hash }, 'New Cast found');
 
         // Filter out the agent mentions (self-posts)
         if (mention.authorFid === agentFid) {
@@ -98,7 +98,7 @@ export class FarcasterPollingSource extends FarcasterInteractionSource {
         // Process mention through the processor
         await this.processor.processMention(cast);
       } catch (error) {
-        logger.error({ error }, '[Farcaster] Error processing mention:');
+        this.runtime.logger.error({ error }, '[Farcaster] Error processing mention:');
       }
     }
   }
@@ -126,7 +126,7 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
   /**
    * Process webhook data (called from webhook route handler)
    */
-  async processWebhookData(webhookData: any): Promise<void> {
+  async processWebhookData(webhookData: NeynarWebhookData): Promise<void> {
     if (!this.isRunning) {
       logger.warn('Webhook source is not running, ignoring webhook data');
       return;
@@ -135,7 +135,7 @@ export class FarcasterWebhookSource extends FarcasterInteractionSource {
     try {
       await this.processor.processWebhookData(webhookData);
     } catch (error) {
-      logger.error({ error }, '[Farcaster] Error processing webhook data:');
+      this.runtime.logger.error({ error }, '[Farcaster] Error processing webhook data:');
     }
   }
 }
