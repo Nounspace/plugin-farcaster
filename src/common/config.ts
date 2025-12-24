@@ -15,11 +15,22 @@ function safeParseInt(value: string | undefined | null, defaultValue: number): n
 }
 
 export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
-  const fid = runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID;
+  const fid =
+    runtime.character.settings?.FARCASTER_FID ||
+    runtime.getSetting('FARCASTER_FID') ||
+    process.env.FARCASTER_FID;
   const neynarSignerUuid =
-    runtime.getSetting('FARCASTER_SIGNER_UUID') || process.env.FARCASTER_SIGNER_UUID;
+    runtime.getSetting('secrets.FARCASTER_SIGNER_UUID') ||
+    runtime.getSetting('FARCASTER_SIGNER_UUID') ||
+    process.env.FARCASTER_SIGNER_UUID;
   const neynarApiKey =
-    runtime.getSetting('FARCASTER_NEYNAR_API_KEY') || process.env.FARCASTER_NEYNAR_API_KEY;
+    runtime.getSetting('secrets.FARCASTER_NEYNAR_API_KEY') ||
+    runtime.getSetting('FARCASTER_NEYNAR_API_KEY') ||
+    process.env.FARCASTER_NEYNAR_API_KEY;
+
+  logger.debug(`[hasFarcasterEnabled] FID: ${fid ? 'Found' : 'Missing'}`);
+  logger.debug(`[hasFarcasterEnabled] Signer UUID: ${neynarSignerUuid ? 'Found' : 'Missing'}`);
+  logger.debug(`[hasFarcasterEnabled] API Key: ${neynarApiKey ? 'Found' : 'Missing'}`);
 
   return fid && neynarSignerUuid && neynarApiKey;
 }
@@ -35,7 +46,11 @@ export function hasFarcasterEnabled(runtime: IAgentRuntime): boolean {
  * @throws {Error} If configuration validation fails, with details about each invalid field.
  */
 export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig {
-  const fid = Number.parseInt(runtime.getSetting('FARCASTER_FID') || process.env.FARCASTER_FID);
+  const fid = Number.parseInt(
+    runtime.character.settings?.FARCASTER_FID ||
+    runtime.getSetting('FARCASTER_FID') ||
+    process.env.FARCASTER_FID
+  );
 
   try {
     const farcasterConfig = {
@@ -88,11 +103,14 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
       ),
 
       FARCASTER_SIGNER_UUID:
+        runtime.getSetting('secrets.FARCASTER_SIGNER_UUID') ||
         runtime.getSetting('FARCASTER_SIGNER_UUID') ||
         process.env.FARCASTER_SIGNER_UUID,
 
       FARCASTER_NEYNAR_API_KEY:
-        runtime.getSetting('FARCASTER_NEYNAR_API_KEY') || process.env.FARCASTER_NEYNAR_API_KEY,
+        runtime.getSetting('secrets.FARCASTER_NEYNAR_API_KEY') ||
+        runtime.getSetting('FARCASTER_NEYNAR_API_KEY') ||
+        process.env.FARCASTER_NEYNAR_API_KEY,
 
       FARCASTER_HUB_URL:
         runtime.getSetting('FARCASTER_HUB_URL') ||
@@ -105,6 +123,10 @@ export function validateFarcasterConfig(runtime: IAgentRuntime): FarcasterConfig
         process.env.FARCASTER_MODE || 
         'polling',
     };
+
+    logger.debug(`[validateFarcasterConfig] Resolved FID: ${farcasterConfig.FARCASTER_FID}`);
+    logger.debug(`[validateFarcasterConfig] Resolved Signer UUID: ${farcasterConfig.FARCASTER_SIGNER_UUID ? 'Found' : 'Missing'}`);
+    logger.debug(`[validateFarcasterConfig] Resolved API Key: ${farcasterConfig.FARCASTER_NEYNAR_API_KEY ? 'Found' : 'Missing'}`);
 
     const config = FarcasterConfigSchema.parse(farcasterConfig);
 

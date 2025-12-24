@@ -6,6 +6,7 @@ import {
   logger,
   type TestCase,
 } from '@elizaos/core';
+import { hasFarcasterEnabled } from '../common/config';
 import { FARCASTER_SERVICE_NAME } from '../common/constants';
 import { FidRequest, FarcasterMessageType } from '../common/types';
 import { FarcasterAgentManager } from '../managers/agent';
@@ -29,41 +30,88 @@ export class FarcasterTestSuite implements TestSuite {
    * Initializes an array of test functions to be executed.
    */
   constructor() {
-    // Check if we have real credentials
-    const hasRealCredentials = !!(
-      process.env.FARCASTER_FID &&
-      process.env.FARCASTER_SIGNER_UUID &&
-      process.env.FARCASTER_NEYNAR_API_KEY
-    );
+    // The decision to run real or mock tests is now deferred to the execution of each test case.
+    // The constructor simply sets up all possible tests.
+    this.tests = farcasterE2EScenarios.map((realTest) => {
+      // Find a corresponding mock test or create a default one.
+      const mockTest: TestCase = {
+        name: `Mock: ${realTest.name}`,
+        fn: async (runtime: IAgentRuntime) => {
+          logger.info(
+            `This is a mock execution of "${realTest.name}". To run the real test, configure Farcaster settings for the '${runtime.character.name}' agent.`
+          );
+          // You could add mock service validation here if needed.
+          const service = runtime.getService(FARCASTER_SERVICE_NAME);
+          if (!service) {
+            logger.warn('Farcaster service not available in mock mode, which might be expected.');
+          }
+        },
+      };
+      return this.credentialedOrMockTest(realTest, mockTest);
+    });
 
-    logger.info('=== Farcaster Test Suite Configuration ===');
-    logger.info(`FID: ${process.env.FARCASTER_FID ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`Signer UUID: ${process.env.FARCASTER_SIGNER_UUID ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`API Key: ${process.env.FARCASTER_NEYNAR_API_KEY ? '✓ Found' : '✗ Missing'}`);
-    logger.info(`Dry Run: ${process.env.FARCASTER_DRY_RUN || 'not set (defaults to false)'}`);
-    logger.info('=========================================');
+    // Add a standalone configuration check test that always runs.
+    this.tests.unshift({
+      name: 'Check Farcaster Configuration',
+      fn: this.testConfiguration.bind(this),
+    });
+  }
 
-    if (hasRealCredentials) {
-      logger.success('✅ Running with real Farcaster credentials');
+  /**
+   * A wrapper for test cases that dynamically runs either a real or mock test
+   * based on the presence of Farcaster credentials in the agent's runtime settings.
+   *
+   * @param realTest - The test case to run if credentials are provided.
+   * @param mockTest - An optional mock test case to run as a fallback.
+   * @returns A TestCase that handles the conditional logic.
+   */
+  private credentialedOrMockTest(realTest: TestCase, mockTest?: TestCase): TestCase {
+    return {
+      name: realTest.name,
+      fn: async (runtime: IAgentRuntime) => {
+        if (hasFarcasterEnabled(runtime)) {
+          logger.info(
+            `[${realTest.name}] Running test with real credentials for agent: ${runtime.character.name}`
+          );
+          await realTest.fn(runtime);
+        } else {
+          if (mockTest) {
+            logger.warn(
+              `[${mockTest.name}] Running mock test for agent: ${runtime.character.name} (credentials not found)`
+            );
+            await mockTest.fn(runtime);
+          } else {
+            logger.info(
+              `[${realTest.name}] Skipping test for agent: ${runtime.character.name} (credentials not found)`
+            );
+          }
+        }
+      },
+    };
+  }
 
-      // Use the E2E scenarios for real testing
-      this.tests = farcasterE2EScenarios;
+  /**
+   * Test that checks and logs the Farcaster configuration for the current agent.
+   */
+  async testConfiguration(runtime: IAgentRuntime) {
+    logger.info(`=== Farcaster Test Configuration for [${runtime.character.name}] ===`);
+    const fid = runtime.getSetting('FARCASTER_FID');
+    const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
+    const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
+    const dryRun = runtime.getSetting('FARCASTER_DRY_RUN') || 'not set (defaults to false)';
+
+    logger.info(`FID: ${fid ? '✓ Found' : '✗ Missing'}`);
+    logger.info(`Signer UUID: ${signerUuid ? '✓ Found' : '✗ Missing'}`);
+    logger.info(`API Key: ${apiKey ? '✓ Found' : '✗ Missing'}`);
+    logger.info(`Dry Run: ${dryRun}`);
+    logger.info('===================================================');
+
+    if (!hasFarcasterEnabled(runtime)) {
+      logger.warn(
+        `⚠️  Farcaster credentials not found in settings for agent [${runtime.character.name}]. Tests will be skipped or mocked.`
+      );
     } else {
-      logger.warn('⚠️  Farcaster credentials not found in environment variables');
-      logger.warn('⚠️  Tests will run in mock mode');
-      logger.warn('⚠️  To run real tests, set FARCASTER_FID, FARCASTER_SIGNER_UUID, and FARCASTER_NEYNAR_API_KEY');
-
-      // Override tests with mock versions
-      this.tests = [
-        {
-          name: 'Mock: Check Farcaster Configuration',
-          fn: this.testMockConfiguration.bind(this),
-        },
-        {
-          name: 'Mock: Service Initialization',
-          fn: this.testMockServiceInit.bind(this),
-        },
-      ];
+      logger.success(`✅ Farcaster credentials found for agent [${runtime.character.name}].`);
     }
   }
 
@@ -72,16 +120,16 @@ export class FarcasterTestSuite implements TestSuite {
    */
   async testMockConfiguration(runtime: IAgentRuntime) {
     logger.info('Running mock configuration test');
-
+    
     const fid = runtime.getSetting('FARCASTER_FID');
     const signerUuid = runtime.getSetting('FARCASTER_SIGNER_UUID');
     const apiKey = runtime.getSetting('FARCASTER_NEYNAR_API_KEY');
-
+    
     logger.info('Runtime settings check:');
     logger.info(`- FID from runtime: ${fid ? 'Found' : 'Not found'}`);
     logger.info(`- Signer UUID from runtime: ${signerUuid ? 'Found' : 'Not found'}`);
     logger.info(`- API Key from runtime: ${apiKey ? 'Found' : 'Not found'}`);
-
+    
     if (!fid || !signerUuid || !apiKey) {
       logger.info('Farcaster not configured - this is expected in mock mode');
       logger.info('To enable real tests, configure the following:');
@@ -96,30 +144,30 @@ export class FarcasterTestSuite implements TestSuite {
    */
   async testMockServiceInit(runtime: IAgentRuntime) {
     logger.info('Running mock service initialization test');
-
+    
     try {
       const service = runtime.getService(FARCASTER_SERVICE_NAME) as any;
-
+      
       if (!service) {
         logger.info('Farcaster service not available - this is expected without credentials');
         return;
       }
-
+      
       logger.info('Farcaster service is registered but may not be fully initialized');
-
+      
       // Test that service methods exist
       if (typeof service.getMessageService === 'function') {
         logger.info('✓ getMessageService method exists');
       }
-
+      
       if (typeof service.getPostService === 'function') {
         logger.info('✓ getPostService method exists');
       }
-
+      
       if (typeof service.healthCheck === 'function') {
         logger.info('✓ healthCheck method exists');
       }
-
+      
     } catch (error) {
       logger.info('Service initialization check completed');
     }
@@ -171,7 +219,7 @@ export class FarcasterTestSuite implements TestSuite {
       if (!profile || !profile.fid) {
         throw new Error('Profile fetch failed.');
       }
-      runtime.logger.info({ profile }, 'Successfully fetched Farcaster profile:');
+      logger.log('Successfully fetched Farcaster profile:', JSON.stringify(profile));
     } catch (error) {
       throw new Error(`Error fetching Farcaster profile: ${error}`);
     }
@@ -467,7 +515,7 @@ export class FarcasterTestSuite implements TestSuite {
         }
 
         logger.success(`Posted real cast: ${post.metadata.castHash}`);
-
+        
         // Wait a bit between posts to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -493,7 +541,7 @@ export class FarcasterTestSuite implements TestSuite {
 
       const postService = service.getPostService(runtime.agentId);
       const messageService = service.getMessageService(runtime.agentId);
-
+      
       if (!postService || !messageService) {
         throw new Error('Services not initialized');
       }
@@ -571,7 +619,7 @@ export class FarcasterTestSuite implements TestSuite {
 
       // Verify we can retrieve the message by its hash
       const retrievedMessage = await messageService.getMessage(castHash, runtime.agentId);
-
+      
       if (!retrievedMessage) {
         throw new Error('Failed to retrieve message by hash');
       }
