@@ -35,7 +35,7 @@ async function build() {
   const dtsStart = Date.now();
   console.log("📝 Generating TypeScript declarations...");
   try {
-    await $`tsc --project tsconfig.build.json`;
+    await $`bunx tsc --project tsconfig.build.json`;
     console.log(`✅ Declarations generated in ${((Date.now() - dtsStart) / 1000).toFixed(2)}s`);
   } catch (error) {
     console.warn(`⚠️  TypeScript declaration generation had errors (${((Date.now() - dtsStart) / 1000).toFixed(2)}s)`);
