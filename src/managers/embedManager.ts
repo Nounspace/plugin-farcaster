@@ -180,11 +180,16 @@ export class EmbedManager {
 
     try {
       // Use vision model to describe the image
-      const result = await this.runtime.useModel(ModelType.IMAGE_DESCRIPTION, url);
+      // Pass as object with prompt and imageUrl for compatibility with OpenAI plugin
+      const result = await this.runtime.useModel(ModelType.IMAGE_DESCRIPTION, {
+        prompt: 'Analyze this image and provide a concise title and description. Focus on the main subject and any notable details.',
+        imageUrl: url,
+      });
       
       if (result && typeof result === 'object') {
-        description = result.description || description;
-        title = result.title || title;
+        const typedResult = result as { title?: string; description?: string };
+        description = typedResult.description || description;
+        title = typedResult.title || title;
       } else if (typeof result === 'string') {
         description = result;
       }
