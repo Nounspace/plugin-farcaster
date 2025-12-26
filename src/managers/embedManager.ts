@@ -82,6 +82,15 @@ export class EmbedManager {
    * Process all embeds from a cast and return Media objects
    */
   async processEmbeds(embeds: NeynarEmbed[]): Promise<Media[]> {
+    if (embeds.length === 0) {
+      return [];
+    }
+
+    this.runtime.logger.info(
+      { embedCount: embeds.length },
+      '[EmbedManager] Processing embeds from cast'
+    );
+
     const processedMedia: Media[] = [];
 
     for (const embed of embeds) {
@@ -97,6 +106,11 @@ export class EmbedManager {
         );
       }
     }
+
+    this.runtime.logger.info(
+      { processedCount: processedMedia.length, types: processedMedia.map(m => m.source) },
+      '[EmbedManager] Finished processing embeds'
+    );
 
     return processedMedia;
   }
@@ -175,9 +189,9 @@ export class EmbedManager {
         description = result;
       }
 
-      this.runtime.logger.debug(
-        { url, descriptionLength: description.length },
-        '[EmbedManager] Processed image embed'
+      this.runtime.logger.info(
+        { url: url.substring(0, 60) + '...', descriptionLength: description.length, title },
+        '[EmbedManager] Processed image with vision model'
       );
     } catch (error) {
       this.runtime.logger.warn(
