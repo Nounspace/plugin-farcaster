@@ -181,9 +181,11 @@ export class EmbedManager {
     try {
       // Use vision model to describe the image
       // Pass as object with prompt and imageUrl for compatibility with OpenAI plugin
+      // Default to gpt-4o-mini which supports vision - can be overridden via OPENAI_IMAGE_DESCRIPTION_MODEL
       const result = await this.runtime.useModel(ModelType.IMAGE_DESCRIPTION, {
         prompt: 'Analyze this image and provide a concise title and description. Focus on the main subject and any notable details.',
         imageUrl: url,
+        model: 'gpt-4o-mini', // Default vision model - supports image analysis
       });
       
       if (result && typeof result === 'object') {
