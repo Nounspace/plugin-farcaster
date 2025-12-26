@@ -235,11 +235,18 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
         });
       }
 
+      // Build text with attachment hint to trigger ATTACHMENTS provider selection
+      let text = cast.text;
+      if (cast.media && cast.media.length > 0) {
+        const attachmentTypes = cast.media.map(m => m.source || 'attachment').join(', ');
+        text = `${cast.text}\n\n(Attachments: ${cast.media.length} - ${attachmentTypes})`;
+      }
+
       const memory: Memory = {
         id: memoryId,
         agentId: this.runtime.agentId,
         content: {
-          text: cast.text,
+          text,
           inReplyTo: cast.inReplyTo?.hash
             ? castUuid({ agentId: this.runtime.agentId, hash: cast.inReplyTo.hash })
             : undefined,
