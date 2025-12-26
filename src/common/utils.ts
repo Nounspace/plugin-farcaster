@@ -100,6 +100,10 @@ export function lastCastCacheKey(fid: number) {
   return `farcaster/${fid}/lastCast`;
 }
 
+/**
+ * Convert a Neynar Cast to our internal Cast type
+ * Now includes embeds from the original cast for media processing
+ */
 export function neynarCastToCast(neynarCast: NeynarCast): Cast {
   return {
     hash: neynarCast.hash,
@@ -120,6 +124,10 @@ export function neynarCastToCast(neynarCast: NeynarCast): Cast {
         }
       : {}),
     timestamp: new Date(neynarCast.timestamp),
+    // Include raw embeds for later processing
+    embeds: neynarCast.embeds && neynarCast.embeds.length > 0 
+      ? neynarCast.embeds 
+      : undefined,
   };
 }
 
@@ -155,6 +163,8 @@ export function createCastMemory({
       inReplyTo,
       hash: cast.hash,
       threadId: cast.threadId,
+      // Include processed media attachments if available
+      attachments: cast.media && cast.media.length > 0 ? cast.media : undefined,
     },
     roomId,
   };

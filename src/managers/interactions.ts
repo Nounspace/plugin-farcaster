@@ -28,6 +28,7 @@ import {
 import { castUuid, neynarCastToCast } from '../common/utils';
 import { createFarcasterInteractionSource, type FarcasterInteractionSource } from './interaction-source';
 import type { IInteractionProcessor } from './interaction-processor';
+import { EmbedManager } from './embedManager';
 
 interface FarcasterInteractionManagerParams {
   client: FarcasterClient;
@@ -44,6 +45,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
   private runtime: IAgentRuntime;
   private config: FarcasterConfig;
   private asyncQueue: AsyncQueue;
+  private embedManager: EmbedManager;
 
   // Mode and source management
   public readonly mode: 'polling' | 'webhook';
@@ -54,6 +56,7 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     this.runtime = opts.runtime;
     this.config = opts.config;
     this.asyncQueue = new AsyncQueue(1);
+    this.embedManager = new EmbedManager(opts.runtime);
 
     // Initialize mode and source
     this.mode = opts.config.FARCASTER_MODE as 'polling' | 'webhook';
@@ -75,6 +78,27 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agent = await this.client.getProfile(agentFid);
     const mention = neynarCastToCast(cast);
 
+    // Process embeds if present
+    if (mention.embeds && mention.embeds.length > 0) {
+      try {
+        this.runtime.logger.debug(
+          { castHash: cast.hash, embedCount: mention.embeds.length },
+          '[Farcaster] Processing embeds for mention'
+        );
+        const processedMedia = await this.embedManager.processEmbeds(mention.embeds);
+        mention.media = processedMedia;
+        this.runtime.logger.info(
+          { castHash: cast.hash, mediaCount: processedMedia.length },
+          '[Farcaster] Processed embeds for mention'
+        );
+      } catch (error) {
+        this.runtime.logger.warn(
+          { error: error instanceof Error ? error.message : String(error), castHash: cast.hash },
+          '[Farcaster] Failed to process embeds, continuing without media'
+        );
+      }
+    }
+
     await this.handleMentionCast({ agent, mention, cast });
   }
 
@@ -86,6 +110,27 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
     const agentFid = this.config.FARCASTER_FID;
     const agent = await this.client.getProfile(agentFid);
     const reply = neynarCastToCast(cast);
+
+    // Process embeds if present
+    if (reply.embeds && reply.embeds.length > 0) {
+      try {
+        this.runtime.logger.debug(
+          { castHash: cast.hash, embedCount: reply.embeds.length },
+          '[Farcaster] Processing embeds for reply'
+        );
+        const processedMedia = await this.embedManager.processEmbeds(reply.embeds);
+        reply.media = processedMedia;
+        this.runtime.logger.info(
+          { castHash: cast.hash, mediaCount: processedMedia.length },
+          '[Farcaster] Processed embeds for reply'
+        );
+      } catch (error) {
+        this.runtime.logger.warn(
+          { error: error instanceof Error ? error.message : String(error), castHash: cast.hash },
+          '[Farcaster] Failed to process embeds, continuing without media'
+        );
+      }
+    }
 
     await this.handleMentionCast({ agent, mention: reply, cast });
   }
@@ -200,6 +245,8 @@ export class FarcasterInteractionManager implements IInteractionProcessor {
             : undefined,
           source: FARCASTER_SOURCE,
           channelType: ChannelType.THREAD,
+          // Include processed media attachments if available
+          attachments: cast.media && cast.media.length > 0 ? cast.media : undefined,
         },
         entityId,
         roomId,

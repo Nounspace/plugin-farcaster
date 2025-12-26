@@ -1,7 +1,7 @@
-import { Memory, MessagePayload } from '@elizaos/core';
+import { type Media, Memory, MessagePayload } from '@elizaos/core';
 import { DEFAULT_MAX_CAST_LENGTH, DEFAULT_POLL_INTERVAL } from './constants';
 
-import { Cast as NeynarCast } from '@neynar/nodejs-sdk/build/api';
+import { Cast as NeynarCast, Embed as NeynarEmbed } from '@neynar/nodejs-sdk/build/api';
 import { z } from 'zod';
 
 export type Profile = {
@@ -11,6 +11,29 @@ export type Profile = {
   pfp?: string;
   bio?: string;
   url?: string;
+};
+
+/**
+ * Embed types that can be attached to a cast
+ */
+export type CastEmbed = {
+  /** Type of embed: image, video, url, cast (quote), frame */
+  type: 'image' | 'video' | 'audio' | 'url' | 'cast' | 'frame' | 'unknown';
+  /** URL of the embedded content */
+  url: string;
+  /** For embedded casts, the cast hash */
+  castHash?: string;
+  /** Metadata about the embed from Neynar */
+  metadata?: {
+    contentType?: string;
+    width?: number;
+    height?: number;
+    duration?: number;
+    title?: string;
+    description?: string;
+    authorFid?: number;
+    authorUsername?: string;
+  };
 };
 
 export type Cast = {
@@ -29,6 +52,10 @@ export type Cast = {
     replies: number;
     likes: number;
   };
+  /** Raw embeds from Neynar API */
+  embeds?: NeynarEmbed[];
+  /** Processed media attachments ready for elizaos Memory */
+  media?: Media[];
 };
 
 export type CastId = {
