@@ -1,6 +1,6 @@
 {
   "name": "@elizaos/plugin-farcaster",
-  "version": "1.7.0",
+  "version": "1.7.2",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -26,6 +26,7 @@
     "zod": "^3.25.9"
   },
   "devDependencies": {
+    "@elizaos/cli": "^1.7.0",
     "vitest": "^3.0.0"
   },
   "scripts": {

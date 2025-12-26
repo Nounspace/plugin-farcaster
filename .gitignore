@@ -4,3 +4,4 @@ dist
 .env.local
 .elizadb-test/
 .eliza/
+bun.lock
